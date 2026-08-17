@@ -1,0 +1,11 @@
+spring:
+  main:
+    banner-mode: "off"
+  flyway:
+    enabled: true
+
+springdoc:
+  api-docs:
+    enabled: false
+  swagger-ui:
+    enabled: false
