@@ -35,6 +35,22 @@ services:
     volumes:
       - minio_data:/data
 
+  minio-init:
+    image: minio/mc:RELEASE.2025-04-16T18-13-26Z
+    depends_on:
+      - minio
+    environment:
+      MINIO_ROOT_USER: minioadmin
+      MINIO_ROOT_PASSWORD: minioadmin
+      MINIO_BUCKET: lowcode-assets
+    entrypoint:
+      - /bin/sh
+      - -c
+      - |
+        until mc alias set local http://minio:9000 "$${MINIO_ROOT_USER}" "$${MINIO_ROOT_PASSWORD}";
+        do sleep 1; done;
+        mc mb --ignore-existing local/$${MINIO_BUCKET}
+
   rabbitmq:
     image: rabbitmq:4.1-management
     ports:

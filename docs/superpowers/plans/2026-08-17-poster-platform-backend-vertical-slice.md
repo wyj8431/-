@@ -1048,14 +1048,16 @@ git commit -m "test: verify backend vertical slice"
 `README.md` must contain:
 
 ```powershell
-docker compose -f infra/docker-compose.yml up -d
+docker compose -f infra/docker-compose.yml up -d --wait mysql redis minio rabbitmq
+docker compose -f infra/docker-compose.yml up -d minio-init
+docker compose -f infra/docker-compose.yml wait minio-init
 $env:SPRING_PROFILES_ACTIVE='local'
 $env:JWT_SECRET='local-development-secret-at-least-32-bytes'
 cd server
 .\mvnw.cmd spring-boot:run
 ```
 
-Document local verification code `123456`, Swagger UI at `http://localhost:8080/swagger-ui.html`, health at `http://localhost:8080/actuator/health`, MinIO console at `http://localhost:9001`, and RabbitMQ console at `http://localhost:15672`.
+Document local verification code `123456`, Swagger UI at `http://localhost:8080/swagger-ui/index.html`, health at `http://localhost:8080/actuator/health`, MinIO console at `http://localhost:9001`, and RabbitMQ console at `http://localhost:15672`.
 
 - [ ] **Step 2: Build the production artifact**
 
