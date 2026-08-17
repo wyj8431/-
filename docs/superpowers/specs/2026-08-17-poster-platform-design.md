@@ -105,4 +105,30 @@ MVP 使用浏览器端 Fabric.js 导出 PNG/JPG。生产阶段加入 RabbitMQ �
 
 - `docs/MVP_REQUIREMENTS.md`：产品需求、页面和验收场景。
 - `docs/BACKEND_DESIGN.md`：Java 模块、数据库、API 和部署设计。
+- `docs/REFERENCE_ARCHITECTURE_NOTES.md`：外部参考资料的采用、调整和延期决策。
 
+## 13. 编辑器内核原则
+
+参考通用低代码编辑器的成熟做法，前端内核遵守以下原则，但不把通用网页低代码的全部范围带入海报 MVP：
+
+1. **Schema First**：`DesignSchema`、`PageSchema` 和 `ElementSchema` 是编辑、预览、保存和导出的共同事实来源。
+2. **API First**：前后端以版本化 REST 契约和 OpenAPI 文档协作，不以数据库实体直接作为接口模型。
+3. **Type First**：TypeScript 类型、Java DTO 和 JSON Schema 的字段名称与含义保持一致。
+4. **Registry First**：元素类型由 `ElementRegistry` 注册，注册项提供默认 Schema、编辑能力、属性面板定义和渲染器。
+5. **Renderer 与 Editor 解耦**：编辑器只修改 Schema；编辑态、预览态和导出态共享同一渲染语义。
+6. **状态与视图解耦**：Pinia 保存编辑会话状态，Vue 组件不各自持有页面结构副本。
+7. **历史命令化**：添加、删除、移动、缩放和属性更新通过 Command/History 记录，以支持 Undo/Redo。
+
+MVP 的元素注册表只包含 `text`、`image`、`rect` 和 `icon`。`button`、`form`、`table`、`chart`、数据源和事件动作属于通用业务低代码，使用独立 Schema 命名空间在后续阶段实现。
+
+## 14. 参考架构适配
+
+外部资料使用 React、Zustand、dnd-kit、Node.js、Prisma 和 PostgreSQL 描述通用网页低代码平台。本项目只采用其中的边界思想：
+
+- React 组件结构映射为 Vue 3 Composition API 组件和 composable。
+- Zustand 映射为 Pinia。
+- 通用 DOM 拖拽映射为 Fabric.js 画布对象交互；组件库拖入画布时才使用 HTML5 Drag and Drop。
+- Node.js 后端、Prisma 和 PostgreSQL 不采用，后端保持 Java 21、Spring Boot、MyBatis-Plus 和 MySQL 8。
+- `PageSchema` 不直接等同于可发布网页；在海报领域中它表示一张画布页面。
+- 发布动作在 MVP 中指模板发布和不可变设计版本，不提供公开网站发布。
+- AI 只能生成或修改 Schema/Patch，禁止生成并执行前端源代码；该能力不进入 MVP。

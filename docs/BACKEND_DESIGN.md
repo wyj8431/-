@@ -18,6 +18,8 @@ JUnit 5 + Testcontainers
 
 项目使用 Maven Wrapper。生产代码采用模块化单体，通过包边界隔离业务；不在 MVP 阶段引入 Spring Cloud。
 
+参考资料中的 PostgreSQL、Prisma 和 Node.js 是通用低代码方案示例，不改变本项目已确认的后端选型。MVP 使用 MySQL 8、MyBatis-Plus 和 Java 21；只有出现 MySQL 无法满足的已验证需求时才重新评估数据库。
+
 ## 包结构
 
 ```text
@@ -40,6 +42,44 @@ com.example.lowcode
 ```
 
 业务模块内部优先按功能聚合 Controller、Application Service、Domain Model、Repository 接口和基础设施实现。业务模块不能直接依赖其他模块的数据库 Mapper，通过公开的应用服务或查询接口协作。
+
+## Schema 引擎边界
+
+前端和 Java 后端共同维护版本化 Schema 契约：
+
+```text
+DesignSchema
+|-- schemaVersion
+|-- canvas
+`-- pages: PageSchema[]
+
+PageSchema
+|-- id
+|-- name
+`-- elements: ElementSchema[]
+
+ElementSchema
+|-- id
+|-- type
+|-- transform
+|-- props
+|-- visible
+|-- locked
+|-- zIndex
+|-- children
+`-- bindings
+```
+
+MVP 只允许 `text`、`image`、`rect` 和 `icon`。Java 后端不理解字体选择器、选框等编辑器 UI 细节，但必须负责：
+
+- 校验 Schema 版本、大小、深度和元素数量。
+- 校验元素 ID 在页面内唯一。
+- 校验元素类型在服务端白名单中。
+- 校验属性类型和素材引用。
+- 校验模板字段引用的元素与属性存在。
+- 在升级 Schema 时执行显式迁移，禁止静默猜测字段。
+
+通用业务低代码的 `ComponentSchema`、`DataSourceSchema` 和 `EventSchema` 使用独立包和独立版本号，不能直接塞入海报 Schema。
 
 ## 模块职责
 
@@ -111,6 +151,18 @@ com.example.lowcode
 
 服务端执行结构、大小和引用完整性校验。MVP 限制单个设计 JSON 不超过 2 MB、页面不超过 20 个、单页元素不超过 500 个。不允许脚本、HTML 事件处理器、`javascript:` URL 或任意外部资源 URL。
 
+Schema 的编辑方和消费方职责如下：
+
+```text
+Vue Editor -> 修改 Schema
+Vue Preview -> 只读渲染 Schema
+Fabric Renderer -> 将 ElementSchema 映射为画布对象
+Java Validator -> 校验并保存 Schema
+Export Worker -> 按固定版本渲染 Schema
+```
+
+编辑器状态、选中元素、缩放比例、撤销栈和面板开关不进入持久化 Schema。
+
 ## API 约定
 
 统一成功响应：
@@ -158,6 +210,8 @@ POST   /api/v1/assets/complete
 POST   /api/v1/designs/{id}/exports
 GET    /api/v1/exports/{taskId}
 ```
+
+项目使用 springdoc-openapi 生成 OpenAPI 3 文档。Controller 只接收请求 DTO 并返回响应 DTO，不直接暴露 MyBatis-Plus 实体。所有对外 Schema DTO 都带明确版本，并通过契约测试防止不兼容修改。
 
 ### 创建设计稿
 
@@ -225,6 +279,19 @@ MVP 由前端 Fabric.js 导出。服务端异步导出启用后：
 
 同一文档、版本、格式和导出参数使用幂等键避免重复任务。
 
+## AI Patch 预留
+
+AI 功能不进入 MVP，但接口设计遵守“AI 修改 Schema，不生成可执行前端代码”的边界。允许的操作为 RFC 6902 风格的 `add`、`remove` 和 `replace`，并增加以下约束：
+
+1. Patch 只能访问 Schema 白名单路径。
+2. 应用 Patch 前检查基础版本。
+3. 应用后重新执行完整 Schema 校验。
+4. 成功结果写入新的不可变版本。
+5. 失败结果不修改原设计稿。
+6. 每批 Patch 设置操作数和数据大小上限。
+
+AI 不允许修改用户权限、租户 ID、素材所有者和服务端任务状态。
+
 ## 错误处理与可观测性
 
 - 使用全局异常处理器映射业务错误码和 HTTP 状态。
@@ -244,4 +311,3 @@ MVP 由前端 Fabric.js 导出。服务端异步导出启用后：
 ## 部署
 
 本地使用 Docker Compose 启动 MySQL、Redis、MinIO 和 RabbitMQ。Spring Boot 应用通过环境变量读取连接信息和密钥，镜像中不包含生产密码。生产环境由 Nginx 终止 TLS，MinIO 下载使用短期签名 URL。
-
