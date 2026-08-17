@@ -106,6 +106,7 @@ MVP 使用浏览器端 Fabric.js 导出 PNG/JPG。生产阶段加入 RabbitMQ �
 - `docs/MVP_REQUIREMENTS.md`：产品需求、页面和验收场景。
 - `docs/BACKEND_DESIGN.md`：Java 模块、数据库、API 和部署设计。
 - `docs/REFERENCE_ARCHITECTURE_NOTES.md`：外部参考资料的采用、调整和延期决策。
+- `docs/PRODUCT_REQUIREMENTS_ROADMAP.md`：补充工单与截图需求的分期、冲突和前置决策。
 
 ## 13. 编辑器内核原则
 
