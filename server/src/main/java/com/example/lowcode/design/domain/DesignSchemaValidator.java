@@ -3,6 +3,7 @@ package com.example.lowcode.design.domain;
 import com.example.lowcode.common.exception.BusinessException;
 import com.example.lowcode.common.exception.ErrorCode;
 import com.fasterxml.jackson.databind.JsonNode;
+import org.springframework.stereotype.Component;
 
 import java.nio.charset.StandardCharsets;
 import java.util.HashSet;
@@ -11,6 +12,7 @@ import java.util.Locale;
 import java.util.Map;
 import java.util.Set;
 
+@Component
 public class DesignSchemaValidator {
     private static final Set<String> ALLOWED_TYPES = Set.of("text", "image", "rect", "icon");
     private static final Set<String> RESOURCE_PROPERTIES = Set.of("src", "url", "href");
