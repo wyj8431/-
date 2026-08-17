@@ -1,11 +1,13 @@
 package com.example.lowcode.integration;
 
 import com.example.lowcode.design.domain.DesignSchemaValidator;
+import com.example.lowcode.auth.support.TestAuthConfiguration;
 import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.context.SpringBootTest;
+import org.springframework.context.annotation.Import;
 import org.springframework.jdbc.core.JdbcTemplate;
 import org.springframework.test.context.ActiveProfiles;
 
@@ -17,6 +19,7 @@ import static org.assertj.core.api.Assertions.assertThat;
 
 @SpringBootTest
 @ActiveProfiles("test")
+@Import(TestAuthConfiguration.class)
 class DatabaseMigrationIT extends MySqlIntegrationTestSupport {
     private static final List<String> EXPECTED_TABLES = List.of(
         "sys_user",

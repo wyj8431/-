@@ -9,3 +9,7 @@ springdoc:
     enabled: false
   swagger-ui:
     enabled: false
+
+app:
+  jwt:
+    secret: test-signing-secret-must-have-at-least-thirty-two-bytes
