@@ -1,0 +1,7 @@
+.worktrees/
+.playwright-mcp/
+**/target/
+.env
+.idea/
+.vscode/
+
