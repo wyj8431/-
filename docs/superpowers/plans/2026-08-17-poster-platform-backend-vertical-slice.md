@@ -320,11 +320,9 @@ Expected: compilation fails because `LowCodeApplication` does not exist.
 ```java
 package com.example.lowcode;
 
-import org.mybatis.spring.annotation.MapperScan;
 import org.springframework.boot.SpringApplication;
 import org.springframework.boot.autoconfigure.SpringBootApplication;
 
-@MapperScan("com.example.lowcode")
 @SpringBootApplication
 public class LowCodeApplication {
     public static void main(String[] args) {
@@ -332,6 +330,9 @@ public class LowCodeApplication {
     }
 }
 ```
+
+Do not configure a package-wide `@MapperScan`. Each concrete MyBatis mapper interface must use
+`@Mapper` so repository ports are never discovered as mapper candidates.
 
 Configure `application.yml` with environment-backed datasource, MinIO and JWT values. Do not provide a production JWT default:
 
