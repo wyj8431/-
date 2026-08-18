@@ -57,7 +57,7 @@ class BackendVerticalSliceIT extends MySqlIntegrationTestSupport {
 
         ResponseEntity<JsonNode> templates = exchange(HttpMethod.GET, "/api/v1/templates", null, null);
         assertThat(templates.getStatusCode()).isEqualTo(HttpStatus.OK);
-        assertThat(templates.getBody().at("/data/0/id").asLong()).isEqualTo(1001L);
+        assertThat(templates.getBody().at("/data/items/0/id").asLong()).isEqualTo(1001L);
 
         ResponseEntity<JsonNode> created = exchange(
             HttpMethod.POST,

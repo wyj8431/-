@@ -1,10 +1,12 @@
 package com.example.lowcode.template.application;
 
 import com.example.lowcode.common.exception.BusinessException;
+import com.example.lowcode.common.exception.ErrorCode;
 import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import org.junit.jupiter.api.Test;
 
+import java.time.Instant;
 import java.util.List;
 import java.util.Optional;
 
@@ -15,20 +17,60 @@ class TemplateQueryServiceTest {
     private final ObjectMapper objectMapper = new ObjectMapper();
 
     @Test
-    void listReturnsPublishedTemplateMetadataAndEditableFieldsWithoutSchema() {
+    void searchNormalizesPublicCriteriaAndReturnsCardMetadataWithoutSchema() {
+        FakeTemplateRepository repository = new FakeTemplateRepository();
+        TemplateQueryService service = new TemplateQueryService(repository);
+
+        TemplatePage<TemplateQueryService.TemplateSummary> page = service.searchPublished(
+            new TemplateSearchCriteria(" 夏日 ", "marketing", "promotion", 1, 24)
+        );
+
+        assertThat(repository.lastCriteria).isEqualTo(
+            new TemplateSearchCriteria("夏日", "marketing", "promotion", 1, 24)
+        );
+        assertThat(page.page()).isEqualTo(1);
+        assertThat(page.pageSize()).isEqualTo(24);
+        assertThat(page.total()).isEqualTo(1L);
+        assertThat(page.items()).singleElement().satisfies(template -> {
+            assertThat(template.id()).isEqualTo(1001L);
+            assertThat(template.coverAssetId()).isNull();
+            assertThat(template.coverUrl()).isNull();
+            assertThat(template.categoryCode()).isEqualTo("marketing");
+            assertThat(template.tagCodes()).containsExactly("promotion");
+            assertThat(template.publishedAt()).isEqualTo(Instant.parse("2026-08-17T00:00:00Z"));
+        });
+    }
+
+    @Test
+    void searchRejectsInvalidPageAndUnavailableCategoryOrTag() {
         TemplateQueryService service = new TemplateQueryService(new FakeTemplateRepository());
 
-        List<TemplateQueryService.TemplateSummary> templates = service.listPublished();
+        assertThatThrownBy(() -> service.searchPublished(
+            new TemplateSearchCriteria(null, null, null, 0, 24)
+        )).isInstanceOf(BusinessException.class)
+            .satisfies(exception -> assertThat(((BusinessException) exception).errorCode())
+                .isEqualTo(ErrorCode.VALIDATION_ERROR));
+        assertThatThrownBy(() -> service.searchPublished(
+            new TemplateSearchCriteria(null, "marketing!", null, 1, 24)
+        )).isInstanceOf(BusinessException.class)
+            .hasMessageContaining("分类");
+        assertThatThrownBy(() -> service.searchPublished(
+            new TemplateSearchCriteria(null, "disabled", null, 1, 24)
+        )).isInstanceOf(BusinessException.class)
+            .hasMessageContaining("分类");
+        assertThatThrownBy(() -> service.searchPublished(
+            new TemplateSearchCriteria(null, null, "unknown", 1, 24)
+        )).isInstanceOf(BusinessException.class)
+            .hasMessageContaining("标签");
+    }
 
-        assertThat(templates).singleElement().satisfies(template -> {
-            assertThat(template.id()).isEqualTo(1001L);
-            assertThat(template.name()).isEqualTo("朋友圈促销");
-            assertThat(template.width()).isEqualTo(1080);
-            assertThat(template.height()).isEqualTo(1440);
-            assertThat(template.coverAssetId()).isNull();
-            assertThat(template.fields()).extracting(TemplateQueryService.TemplateFieldView::fieldKey)
-                .containsExactly("productName", "productImage");
-        });
+    @Test
+    void listsOnlyPublishedCategories() {
+        TemplateQueryService service = new TemplateQueryService(new FakeTemplateRepository());
+
+        assertThat(service.listPublishedCategories()).containsExactly(
+            new TemplateQueryService.TemplateCategoryView("marketing", "营销推广", null)
+        );
     }
 
     @Test
@@ -58,12 +100,32 @@ class TemplateQueryServiceTest {
             1080,
             1440,
             null,
-            fields()
+            null,
+            "marketing",
+            List.of("promotion"),
+            Instant.parse("2026-08-17T00:00:00Z")
         );
+        private TemplateSearchCriteria lastCriteria;
 
         @Override
-        public List<TemplateQueryService.TemplateSummary> findPublished() {
-            return List.of(summary);
+        public TemplatePage<TemplateQueryService.TemplateSummary> searchPublished(TemplateSearchCriteria criteria) {
+            lastCriteria = criteria;
+            return new TemplatePage<>(List.of(summary), criteria.page(), criteria.pageSize(), 1L);
+        }
+
+        @Override
+        public List<TemplateQueryService.TemplateCategoryView> findPublishedCategories() {
+            return List.of(new TemplateQueryService.TemplateCategoryView("marketing", "营销推广", null));
+        }
+
+        @Override
+        public boolean hasPublishedCategory(String code) {
+            return "marketing".equals(code);
+        }
+
+        @Override
+        public boolean hasPublishedTag(String code) {
+            return "promotion".equals(code);
         }
 
         @Override
@@ -78,7 +140,7 @@ class TemplateQueryServiceTest {
                 summary.height(),
                 summary.coverAssetId(),
                 schema(),
-                summary.fields()
+                fields()
             ));
         }
 

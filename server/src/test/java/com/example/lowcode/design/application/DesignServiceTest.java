@@ -5,6 +5,8 @@ import com.example.lowcode.common.exception.BusinessException;
 import com.example.lowcode.design.domain.DesignSchemaValidator;
 import com.example.lowcode.template.application.TemplateQueryService;
 import com.example.lowcode.template.application.TemplateRepository;
+import com.example.lowcode.template.application.TemplatePage;
+import com.example.lowcode.template.application.TemplateSearchCriteria;
 import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import org.junit.jupiter.api.Test;
@@ -109,8 +111,23 @@ class DesignServiceTest {
 
     private final class FakeTemplateRepository implements TemplateRepository {
         @Override
-        public List<TemplateQueryService.TemplateSummary> findPublished() {
+        public TemplatePage<TemplateQueryService.TemplateSummary> searchPublished(TemplateSearchCriteria criteria) {
+            return new TemplatePage<>(List.of(), criteria.page(), criteria.pageSize(), 0L);
+        }
+
+        @Override
+        public List<TemplateQueryService.TemplateCategoryView> findPublishedCategories() {
             return List.of();
+        }
+
+        @Override
+        public boolean hasPublishedCategory(String code) {
+            return false;
+        }
+
+        @Override
+        public boolean hasPublishedTag(String code) {
+            return false;
         }
 
         @Override

@@ -2,14 +2,15 @@ package com.example.lowcode.template.api;
 
 import com.example.lowcode.common.api.ApiResponse;
 import com.example.lowcode.common.web.TraceIdFilter;
+import com.example.lowcode.template.application.TemplatePage;
 import com.example.lowcode.template.application.TemplateQueryService;
+import com.example.lowcode.template.application.TemplateSearchCriteria;
 import jakarta.servlet.http.HttpServletRequest;
+import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RestController;
-
-import java.util.List;
 
 @RestController
 @RequestMapping("/api/v1/templates")
@@ -21,9 +22,18 @@ public class TemplateController {
     }
 
     @GetMapping
-    public ApiResponse<List<TemplateQueryService.TemplateSummary>> list(HttpServletRequest request) {
+    public ApiResponse<TemplatePage<TemplateQueryService.TemplateSummary>> list(
+        @RequestParam(required = false) String keyword,
+        @RequestParam(required = false) String categoryCode,
+        @RequestParam(required = false) String tagCode,
+        @RequestParam(defaultValue = "1") int page,
+        @RequestParam(defaultValue = "24") int pageSize,
+        HttpServletRequest request
+    ) {
         return ApiResponse.success(
-            templateQueryService.listPublished(),
+            templateQueryService.searchPublished(
+                new TemplateSearchCriteria(keyword, categoryCode, tagCode, page, pageSize)
+            ),
             (String) request.getAttribute(TraceIdFilter.TRACE_ID_ATTRIBUTE)
         );
     }

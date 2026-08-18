@@ -23,13 +23,43 @@ class TemplateControllerTest extends MySqlIntegrationTestSupport {
     private MockMvc mockMvc;
 
     @Test
-    void anonymousUsersCanListPublishedTemplateMetadataWithoutSchema() throws Exception {
-        mockMvc.perform(get("/api/v1/templates"))
+    void anonymousUsersCanSearchPublishedTemplateCardsAndRejectInvalidFilters() throws Exception {
+        mockMvc.perform(get("/api/v1/templates")
+                .queryParam("keyword", "促销")
+                .queryParam("categoryCode", "marketing")
+                .queryParam("tagCode", "promotion"))
             .andExpect(status().isOk())
             .andExpect(jsonPath("$.code").value("OK"))
-            .andExpect(jsonPath("$.data[0].id").value(1001))
-            .andExpect(jsonPath("$.data[0].fields[0].fieldKey").value("productName"))
-            .andExpect(jsonPath("$.data[0].schema").doesNotExist());
+            .andExpect(jsonPath("$.data.page").value(1))
+            .andExpect(jsonPath("$.data.pageSize").value(24))
+            .andExpect(jsonPath("$.data.total").value(1))
+            .andExpect(jsonPath("$.data.items[0].id").value(1001))
+            .andExpect(jsonPath("$.data.items[0].categoryCode").value("marketing"))
+            .andExpect(jsonPath("$.data.items[0].tagCodes[0]").value("promotion"))
+            .andExpect(jsonPath("$.data.items[0].fields").doesNotExist())
+            .andExpect(jsonPath("$.data.items[0].schema").doesNotExist());
+
+        mockMvc.perform(get("/api/v1/templates").queryParam("pageSize", "49"))
+            .andExpect(status().isBadRequest())
+            .andExpect(jsonPath("$.code").value("VALIDATION_ERROR"));
+
+        mockMvc.perform(get("/api/v1/templates").queryParam("categoryCode", "unknown"))
+            .andExpect(status().isBadRequest())
+            .andExpect(jsonPath("$.code").value("VALIDATION_ERROR"));
+
+        mockMvc.perform(get("/api/v1/templates").queryParam("tagCode", "unknown"))
+            .andExpect(status().isBadRequest())
+            .andExpect(jsonPath("$.code").value("VALIDATION_ERROR"));
+    }
+
+    @Test
+    void anonymousUsersCanListPublishedTemplateCategories() throws Exception {
+        mockMvc.perform(get("/api/v1/template-categories"))
+            .andExpect(status().isOk())
+            .andExpect(jsonPath("$.code").value("OK"))
+            .andExpect(jsonPath("$.data[0].code").value("marketing"))
+            .andExpect(jsonPath("$.data[0].name").value("营销推广"))
+            .andExpect(jsonPath("$.data[0].parentCode").doesNotExist());
     }
 
     @Test
