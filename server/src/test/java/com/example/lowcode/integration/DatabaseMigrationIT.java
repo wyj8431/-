@@ -31,7 +31,13 @@ class DatabaseMigrationIT extends MySqlIntegrationTestSupport {
         "design_version",
         "design_permission",
         "asset_upload_session",
-        "asset"
+        "asset",
+        "template_category",
+        "template_tag",
+        "template_tag_relation",
+        "template_cover_asset",
+        "home_topic",
+        "home_topic_template"
     );
 
     @Autowired
@@ -39,13 +45,16 @@ class DatabaseMigrationIT extends MySqlIntegrationTestSupport {
 
     @Test
     void flywayCreatesEveryMvpTable() {
+        String placeholders = EXPECTED_TABLES.stream()
+            .map(ignored -> "?")
+            .collect(Collectors.joining(", "));
         Integer tableCount = jdbcTemplate.queryForObject(
             """
                 SELECT COUNT(*)
                 FROM information_schema.tables
                 WHERE table_schema = DATABASE()
-                  AND table_name IN (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
-                """,
+                  AND table_name IN (%s)
+                """.formatted(placeholders),
             Integer.class,
             EXPECTED_TABLES.toArray()
         );
@@ -100,6 +109,28 @@ class DatabaseMigrationIT extends MySqlIntegrationTestSupport {
         assertThat(foreignKeyNames("design_version")).contains("fk_version_document_tenant");
         assertThat(foreignKeyNames("design_permission"))
             .contains("fk_permission_document_tenant", "fk_permission_tenant_member");
+    }
+
+    @Test
+    void v2AddsDiscoveryDataWithoutChangingTheV1Template() {
+        assertThat(indexNames("design_template"))
+            .contains("idx_template_discovery", "idx_template_featured");
+        assertThat(foreignKeyNames("design_template"))
+            .contains("fk_template_category", "fk_template_cover_asset");
+        assertThat(jdbcTemplate.queryForObject(
+            "SELECT category_id FROM design_template WHERE id = 1001", Long.class
+        )).isEqualTo(10L);
+        assertThat(jdbcTemplate.queryForObject(
+            "SELECT COUNT(*) FROM template_tag_relation WHERE template_id = 1001 AND tag_id = 20",
+            Integer.class
+        )).isEqualTo(1);
+        assertThat(jdbcTemplate.queryForObject(
+            "SELECT cover_asset_id FROM design_template WHERE id = 1001", Long.class
+        )).isNull();
+        assertThat(jdbcTemplate.queryForObject(
+            "SELECT COUNT(*) FROM home_topic_template WHERE topic_id = 30 AND template_id = 1001",
+            Integer.class
+        )).isEqualTo(1);
     }
 
     private List<String> indexNames(String tableName) {
