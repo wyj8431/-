@@ -198,6 +198,10 @@ GET    /api/v1/templates
 GET    /api/v1/templates/{id}
 POST   /api/v1/templates/{id}/clone
 
+GET    /api/v1/home
+GET    /api/v1/template-categories
+GET    /api/v1/template-cover-assets/{id}/content
+
 POST   /api/v1/designs
 GET    /api/v1/designs
 GET    /api/v1/designs/{id}
@@ -212,6 +216,8 @@ GET    /api/v1/exports/{taskId}
 ```
 
 项目使用 springdoc-openapi 生成 OpenAPI 3 文档。Controller 只接收请求 DTO 并返回响应 DTO，不直接暴露 MyBatis-Plus 实体。所有对外 Schema DTO 都带明确版本，并通过契约测试防止不兼容修改。
+
+P0 工作台只读取已发布且公开的首页专题、分类、标签、模板摘要、模板详情和封面内容。`GET /api/v1/templates` 默认分页大小为 24，最大为 48；关键词、分类编码和标签编码在服务端校验。`POST /api/v1/designs` 仍要求 JWT，前端在登录后只恢复一次待执行的模板创建意图。
 
 ### 创建设计稿
 

@@ -1,6 +1,28 @@
-# Poster Platform Backend
+# All+poster
 
-Java 21 and Spring Boot backend for the poster-design MVP. The current vertical slice covers phone-code login, published templates, versioned design documents, and validated image uploads.
+All+poster is a small-business poster workbench. The current vertical slice covers the Java 21/Spring Boot backend and the Vue 3 template-discovery workbench: public template browsing, search, detail, responsive layout, login intent recovery, and authenticated design creation.
+
+## P0 Workbench
+
+The current phase is P0, limited to workbench home and template discovery. The editor, free canvas, membership, collaboration, customer service, AI, and video routes remain intentionally unavailable.
+
+Run the frontend from `poster-client/`:
+
+```powershell
+cd poster-client
+npm install
+npm run dev
+```
+
+The Vite dev server is available at `http://localhost:5173` and proxies `/api` to the local backend at `http://localhost:8080`.
+
+Frontend verification:
+
+```powershell
+npm run test:unit
+npm run build
+npm run test:e2e
+```
 
 ## Local Run
 
