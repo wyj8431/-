@@ -57,9 +57,25 @@ public class MyBatisTemplateRepository implements TemplateRepository {
     }
 
     @Override
+    public List<TemplateQueryService.TemplateSummary> findPublishedByIds(List<Long> templateIds) {
+        List<DesignTemplateMapper.TemplateRow> rows = designTemplateMapper.findPublishedByIds(templateIds);
+        Map<Long, List<String>> tagCodes = tagsByTemplate(rows);
+        return rows.stream()
+            .map(row -> toSummary(row, tagCodes.getOrDefault(row.getId(), List.of())))
+            .toList();
+    }
+
+    @Override
     public List<TemplateQueryService.TemplateCategoryView> findPublishedCategories() {
         return templateCategoryMapper.findPublished().stream()
             .map(row -> new TemplateQueryService.TemplateCategoryView(row.getCode(), row.getName(), row.getParentCode()))
+            .toList();
+    }
+
+    @Override
+    public List<TemplateQueryService.TemplateTagView> findPublishedTags() {
+        return templateTagMapper.findPublished().stream()
+            .map(row -> new TemplateQueryService.TemplateTagView(row.getCode(), row.getName()))
             .toList();
     }
 

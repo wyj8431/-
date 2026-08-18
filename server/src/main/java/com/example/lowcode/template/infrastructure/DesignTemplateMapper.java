@@ -27,6 +27,21 @@ public interface DesignTemplateMapper {
         @Param("tagCode") String tagCode
     );
 
+    @Select({
+        "<script>",
+        "SELECT t.id, t.name, t.width, t.height,",
+        "t.cover_asset_id AS coverAssetId, c.code AS categoryCode, t.published_at AS publishedAt",
+        "FROM design_template t",
+        "LEFT JOIN template_category c ON c.id = t.category_id AND c.status = 'PUBLISHED'",
+        "WHERE t.status = 'PUBLISHED' AND t.id IN",
+        "<foreach collection='templateIds' item='templateId' open='(' separator=',' close=')'>",
+        "#{templateId}",
+        "</foreach>",
+        "ORDER BY t.featured_rank IS NULL ASC, t.featured_rank ASC, t.published_at DESC, t.id DESC",
+        "</script>"
+    })
+    List<TemplateRow> findPublishedByIds(@Param("templateIds") List<Long> templateIds);
+
     @Select("""
         SELECT id, name, width, height, cover_asset_id AS coverAssetId, schema_json AS schemaJson
         FROM design_template

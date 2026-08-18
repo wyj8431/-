@@ -3,9 +3,13 @@ package com.example.lowcode.auth.security;
 import com.example.lowcode.common.exception.ErrorCode;
 import com.example.lowcode.common.web.SecurityErrorResponseWriter;
 import com.example.lowcode.common.web.TraceIdFilter;
+import org.springframework.beans.factory.annotation.Value;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
 import org.springframework.http.HttpMethod;
+import org.springframework.web.cors.CorsConfiguration;
+import org.springframework.web.cors.CorsConfigurationSource;
+import org.springframework.web.cors.UrlBasedCorsConfigurationSource;
 import org.springframework.security.config.Customizer;
 import org.springframework.security.config.annotation.web.builders.HttpSecurity;
 import org.springframework.security.config.annotation.web.configuration.EnableWebSecurity;
@@ -18,6 +22,9 @@ import org.springframework.security.oauth2.server.resource.web.authentication.Be
 import org.springframework.security.web.access.AccessDeniedHandler;
 import org.springframework.security.web.AuthenticationEntryPoint;
 
+import java.util.Arrays;
+import java.util.List;
+
 @Configuration
 @EnableWebSecurity
 public class SecurityConfig {
@@ -25,7 +32,8 @@ public class SecurityConfig {
     SecurityFilterChain securityFilterChain(
         HttpSecurity http,
         TraceIdFilter traceIdFilter,
-        SecurityErrorResponseWriter securityErrorResponseWriter
+        SecurityErrorResponseWriter securityErrorResponseWriter,
+        CorsConfigurationSource corsConfigurationSource
     ) throws Exception {
         AuthenticationEntryPoint authenticationEntryPoint = (request, response, exception) ->
             securityErrorResponseWriter.write(request, response, ErrorCode.UNAUTHORIZED);
@@ -34,11 +42,14 @@ public class SecurityConfig {
 
         return http
             .csrf(csrf -> csrf.disable())
+            .cors(cors -> cors.configurationSource(corsConfigurationSource))
             .sessionManagement(session -> session.sessionCreationPolicy(SessionCreationPolicy.STATELESS))
             .authorizeHttpRequests(authorize -> authorize
                 .requestMatchers(HttpMethod.POST, "/api/v1/auth/login").permitAll()
+                .requestMatchers(HttpMethod.GET, "/api/v1/home").permitAll()
                 .requestMatchers(HttpMethod.GET, "/api/v1/template-categories").permitAll()
                 .requestMatchers(HttpMethod.GET, "/api/v1/templates/**").permitAll()
+                .requestMatchers(HttpMethod.GET, "/api/v1/template-cover-assets/**").permitAll()
                 .requestMatchers("/actuator/health").permitAll()
                 .requestMatchers(HttpMethod.GET, "/swagger-ui.html", "/swagger-ui/**").permitAll()
                 .requestMatchers(HttpMethod.GET, "/v3/api-docs", "/v3/api-docs/**").permitAll()
@@ -68,5 +79,21 @@ public class SecurityConfig {
     @Bean
     TraceIdFilter traceIdFilter() {
         return new TraceIdFilter();
+    }
+
+    @Bean
+    CorsConfigurationSource corsConfigurationSource(
+        @Value("${app.web.allowed-origins:http://localhost:5173}") String allowedOrigins
+    ) {
+        CorsConfiguration configuration = new CorsConfiguration();
+        configuration.setAllowedOrigins(Arrays.stream(allowedOrigins.split(","))
+            .map(String::trim)
+            .filter(origin -> !origin.isEmpty())
+            .toList());
+        configuration.setAllowedMethods(List.of("GET", "POST", "PATCH", "OPTIONS"));
+        configuration.setAllowedHeaders(List.of("Authorization", "Content-Type"));
+        UrlBasedCorsConfigurationSource source = new UrlBasedCorsConfigurationSource();
+        source.registerCorsConfiguration("/api/**", configuration);
+        return source;
     }
 }

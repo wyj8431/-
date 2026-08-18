@@ -15,6 +15,14 @@ public interface TemplateTagMapper {
         """)
     int countPublishedByCode(@Param("code") String code);
 
+    @Select("""
+        SELECT code, name
+        FROM template_tag
+        WHERE status = 'PUBLISHED'
+        ORDER BY sort_order ASC, id ASC
+        """)
+    List<PublicTagRow> findPublished();
+
     @Select({
         "<script>",
         "SELECT r.template_id AS templateId, g.code AS tagCode",
@@ -47,6 +55,27 @@ public interface TemplateTagMapper {
 
         public void setTagCode(String tagCode) {
             this.tagCode = tagCode;
+        }
+    }
+
+    class PublicTagRow {
+        private String code;
+        private String name;
+
+        public String getCode() {
+            return code;
+        }
+
+        public void setCode(String code) {
+            this.code = code;
+        }
+
+        public String getName() {
+            return name;
+        }
+
+        public void setName(String name) {
+            this.name = name;
         }
     }
 }

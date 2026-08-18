@@ -44,6 +44,21 @@ public class TemplateQueryService {
         return templateRepository.findPublishedCategories();
     }
 
+    public List<TemplateTagView> listPublishedTags() {
+        return templateRepository.findPublishedTags();
+    }
+
+    public List<TemplateSummary> findPublishedByIds(List<Long> templateIds) {
+        if (templateIds == null || templateIds.isEmpty()) {
+            return List.of();
+        }
+        List<Long> normalizedIds = templateIds.stream()
+            .filter(id -> id != null && id > 0)
+            .distinct()
+            .toList();
+        return normalizedIds.isEmpty() ? List.of() : templateRepository.findPublishedByIds(normalizedIds);
+    }
+
     public TemplateDetail findPublishedById(long templateId) {
         TemplateDetail template = templateRepository.findPublishedById(templateId)
             .orElseThrow(() -> new BusinessException(ErrorCode.NOT_FOUND, "模板不存在或未发布"));
@@ -87,6 +102,9 @@ public class TemplateQueryService {
     }
 
     public record TemplateCategoryView(String code, String name, String parentCode) {
+    }
+
+    public record TemplateTagView(String code, String name) {
     }
 
     public record TemplateFieldView(
