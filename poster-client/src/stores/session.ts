@@ -11,6 +11,7 @@ export const useSessionStore = defineStore('session', () => {
   const accessToken = ref<string | null>(null)
   const userId = ref<number | null>(null)
   const tenantId = ref<number | null>(null)
+  const tenantRole = ref<LoginResult['tenantRole'] | null>(null)
   const expiresAt = ref<number>(0)
   const pendingTemplateAction = ref<PendingTemplateAction | null>(null)
 
@@ -20,6 +21,7 @@ export const useSessionStore = defineStore('session', () => {
     accessToken.value = result.accessToken
     userId.value = result.userId
     tenantId.value = result.tenantId
+    tenantRole.value = result.tenantRole
     expiresAt.value = Date.now() + result.expiresIn * 1000
   }
 
@@ -37,6 +39,7 @@ export const useSessionStore = defineStore('session', () => {
     accessToken.value = null
     userId.value = null
     tenantId.value = null
+    tenantRole.value = null
     expiresAt.value = 0
   }
 
@@ -44,6 +47,7 @@ export const useSessionStore = defineStore('session', () => {
     accessToken,
     userId,
     tenantId,
+    tenantRole,
     expiresAt,
     pendingTemplateAction,
     isAuthenticated,

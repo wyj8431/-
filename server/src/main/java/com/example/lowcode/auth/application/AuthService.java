@@ -6,11 +6,13 @@ import com.example.lowcode.common.exception.ErrorCode;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
+import java.util.Set;
 import java.util.regex.Pattern;
 
 @Service
 public class AuthService {
     private static final Pattern MAINLAND_CHINA_PHONE = Pattern.compile("1[3-9]\\d{9}");
+    private static final Set<String> TENANT_ROLES = Set.of("ADMIN", "USER", "OPERATOR");
 
     private final AuthRepository authRepository;
     private final VerificationCodeVerifier verificationCodeVerifier;
@@ -36,14 +38,20 @@ public class AuthService {
         AuthRepository.UserIdentity identity = authRepository.findByPhone(phone)
             .orElseGet(() -> authRepository.createUserWithDefaultTenant(phone));
         validateLoginIdentity(identity);
-        JwtTokenService.IssuedToken token = jwtTokenService.issue(identity.userId(), identity.tenantId());
+        validateTenantRole(identity);
+        JwtTokenService.IssuedToken token = jwtTokenService.issue(
+            identity.userId(),
+            identity.tenantId(),
+            identity.tenantRole()
+        );
 
         return new LoginResult(
             token.value(),
             "Bearer",
             token.expiresInSeconds(),
             identity.userId(),
-            identity.tenantId()
+            identity.tenantId(),
+            identity.tenantRole()
         );
     }
 
@@ -67,9 +75,22 @@ public class AuthService {
         }
     }
 
+    private void validateTenantRole(AuthRepository.UserIdentity identity) {
+        if (!TENANT_ROLES.contains(identity.tenantRole())) {
+            throw new BusinessException(ErrorCode.FORBIDDEN, "当前成员角色无效");
+        }
+    }
+
     public record LoginCommand(String phone, String verificationCode) {
     }
 
-    public record LoginResult(String accessToken, String tokenType, long expiresIn, long userId, long tenantId) {
+    public record LoginResult(
+        String accessToken,
+        String tokenType,
+        long expiresIn,
+        long userId,
+        long tenantId,
+        String tenantRole
+    ) {
     }
 }

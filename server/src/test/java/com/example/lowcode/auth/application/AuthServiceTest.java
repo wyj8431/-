@@ -29,6 +29,7 @@ class AuthServiceTest {
         assertThat(result.expiresIn()).isEqualTo(900);
         assertThat(result.userId()).isPositive();
         assertThat(result.tenantId()).isPositive();
+        assertThat(result.tenantRole()).isEqualTo("ADMIN");
         assertThat(userRepository.count()).isEqualTo(1);
     }
 
@@ -90,13 +91,13 @@ class AuthServiceTest {
 
         @Override
         public UserIdentity createUserWithDefaultTenant(String phone) {
-            UserIdentity identity = new UserIdentity(nextId++, nextId++, phone, "ACTIVE", "ACTIVE");
+            UserIdentity identity = new UserIdentity(nextId++, nextId++, phone, "ACTIVE", "ACTIVE", "ADMIN");
             users.put(phone, identity);
             return identity;
         }
 
         void addExisting(String phone, long userId, Long tenantId, String userStatus, String tenantStatus) {
-            users.put(phone, new UserIdentity(userId, tenantId, phone, userStatus, tenantStatus));
+            users.put(phone, new UserIdentity(userId, tenantId, phone, userStatus, tenantStatus, "USER"));
         }
 
         int count() {

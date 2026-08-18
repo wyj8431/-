@@ -7,6 +7,13 @@ public interface AuthRepository {
 
     UserIdentity createUserWithDefaultTenant(String phone);
 
-    record UserIdentity(long userId, Long tenantId, String phone, String userStatus, String tenantStatus) {
+    record UserIdentity(
+        long userId,
+        Long tenantId,
+        String phone,
+        String userStatus,
+        String tenantStatus,
+        String tenantRole
+    ) {
     }
 }

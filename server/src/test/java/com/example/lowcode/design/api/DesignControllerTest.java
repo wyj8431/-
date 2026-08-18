@@ -50,7 +50,7 @@ class DesignControllerTest extends MySqlIntegrationTestSupport {
         jdbcTemplate.update("INSERT INTO sys_tenant (name, status) VALUES (?, 'ACTIVE')", tenantName);
         tenantId = jdbcTemplate.queryForObject("SELECT id FROM sys_tenant WHERE name = ?", Long.class, tenantName);
         jdbcTemplate.update(
-            "INSERT INTO sys_tenant_member (tenant_id, user_id, role) VALUES (?, ?, 'OWNER')",
+            "INSERT INTO sys_tenant_member (tenant_id, user_id, role) VALUES (?, ?, 'ADMIN')",
             tenantId,
             userId
         );
@@ -137,7 +137,7 @@ class DesignControllerTest extends MySqlIntegrationTestSupport {
         jdbcTemplate.update("INSERT INTO sys_tenant (name, status) VALUES (?, 'ACTIVE')", tenantName);
         long otherTenantId = jdbcTemplate.queryForObject("SELECT id FROM sys_tenant WHERE name = ?", Long.class, tenantName);
         jdbcTemplate.update(
-            "INSERT INTO sys_tenant_member (tenant_id, user_id, role) VALUES (?, ?, 'OWNER')",
+            "INSERT INTO sys_tenant_member (tenant_id, user_id, role) VALUES (?, ?, 'ADMIN')",
             otherTenantId,
             otherUserId
         );

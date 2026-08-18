@@ -72,6 +72,7 @@ export interface LoginResult {
   expiresIn: number
   userId: number
   tenantId: number
+  tenantRole: 'ADMIN' | 'USER' | 'OPERATOR'
 }
 
 export interface DesignView {

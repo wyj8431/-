@@ -21,4 +21,21 @@ describe('session store', () => {
     expect(createCount).toBe(1)
     expect(session.pendingTemplateAction).toBeNull()
   })
+
+  it('keeps the tenant role returned by login', () => {
+    const session = useSessionStore()
+
+    session.setSession({
+      accessToken: 'access-token',
+      tokenType: 'Bearer',
+      expiresIn: 900,
+      userId: 7,
+      tenantId: 11,
+      tenantRole: 'OPERATOR',
+    })
+
+    expect(session.tenantRole).toBe('OPERATOR')
+    session.clear()
+    expect(session.tenantRole).toBeNull()
+  })
 })

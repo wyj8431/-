@@ -35,11 +35,16 @@ public class JwtTokenService {
     }
 
     public IssuedToken issue(long userId, long tenantId) {
+        return issue(userId, tenantId, "USER");
+    }
+
+    public IssuedToken issue(long userId, long tenantId, String tenantRole) {
         Instant issuedAt = Instant.now();
         Instant expiresAt = issuedAt.plus(accessTokenTtl);
         JWTClaimsSet claims = new JWTClaimsSet.Builder()
             .subject(Long.toString(userId))
             .claim("tenantId", tenantId)
+            .claim("tenantRole", tenantRole)
             .jwtID(UUID.randomUUID().toString())
             .issueTime(Date.from(issuedAt))
             .expirationTime(Date.from(expiresAt))

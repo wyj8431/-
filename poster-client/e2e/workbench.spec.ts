@@ -28,19 +28,20 @@ async function mockDiscoveryApi(page: import('@playwright/test').Page) {
     if (url.pathname === '/api/v1/template-categories') return response([{ code: 'marketing', name: '营销推广' }])
     if (url.pathname === '/api/v1/templates') return response({ items: [template], page: 1, pageSize: 24, total: 1 })
     if (url.pathname === '/api/v1/templates/1001') return response({ ...template, schema: { schemaVersion: 1, canvas: { width: 1080, height: 1440 }, pages: [] }, fields: [{ fieldKey: 'title', label: '主标题', fieldType: 'TEXT', required: true, defaultValue: '' }] })
-    if (url.pathname === '/api/v1/auth/login' && route.request().method() === 'POST') return response({ accessToken: 'e2e-token', tokenType: 'Bearer', expiresIn: 3600, userId: 1, tenantId: 1 })
+    if (url.pathname === '/api/v1/auth/login' && route.request().method() === 'POST') return response({ accessToken: 'e2e-token', tokenType: 'Bearer', expiresIn: 3600, userId: 1, tenantId: 1, tenantRole: 'ADMIN' })
     if (url.pathname === '/api/v1/designs' && route.request().method() === 'POST') return response({ id: 301, templateId: 1001, name: '夏日促销 · 我的设计', width: 1080, height: 1440, currentVersion: 1, schema: { schemaVersion: 1, pages: [] }, updatedAt: '2026-08-18T09:00:00Z' })
     return route.fulfill({ status: 404, contentType: 'application/json', body: JSON.stringify({ code: 'NOT_FOUND', message: 'Not found', data: null }) })
   })
 }
 
-test.beforeEach(async ({ page }) => {
+test.beforeEach(async ({ page }, testInfo) => {
   await mockDiscoveryApi(page)
   await page.goto('/')
   await expect(page.getByRole('heading', { name: '模板库' })).toBeVisible()
+  await page.screenshot({ path: testInfo.outputPath('workbench-home.png'), fullPage: false })
 })
 
-test('creates a design after login and preserves the selected template intent', async ({ page }) => {
+test('creates a design after login and preserves the selected template intent', async ({ page }, testInfo) => {
   await page.getByRole('button', { name: '打开夏日促销模板' }).click()
   await expect(page.getByRole('dialog')).toContainText('可编辑字段：1 项')
   await page.getByRole('button', { name: '使用此模板' }).click()
@@ -53,10 +54,11 @@ test('creates a design after login and preserves the selected template intent', 
   await expect(page.getByRole('dialog', { name: '确认创建设计稿' })).toBeVisible()
   await page.getByRole('button', { name: '确认创建' }).click()
   await expect(page.getByRole('dialog', { name: '设计稿已创建' })).toBeVisible()
+  await page.screenshot({ path: testInfo.outputPath('workbench-desktop-or-mobile.png'), fullPage: false })
 })
 
 test('keeps future-phase navigation in place', async ({ page }) => {
-  await page.locator('.mode-tabs .mode-tab').filter({ hasText: '智能创作' }).click()
+  await page.locator('.mode-tabs .mode-tab').filter({ hasText: 'Agent 模式' }).click()
   await expect(page.getByText('将在后续阶段开放', { exact: true })).toBeVisible()
   await expect(page).toHaveURL(/\/$/)
 })

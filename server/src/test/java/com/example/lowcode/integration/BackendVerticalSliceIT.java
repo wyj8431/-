@@ -139,6 +139,7 @@ class BackendVerticalSliceIT extends MySqlIntegrationTestSupport {
             objectMapper.createObjectNode().put("phone", phone).put("verificationCode", "123456")
         );
         assertThat(response.getStatusCode()).isEqualTo(HttpStatus.OK);
+        assertThat(response.getBody().at("/data/tenantRole").asText()).isEqualTo("ADMIN");
         return response.getBody().at("/data/accessToken").asText();
     }
 

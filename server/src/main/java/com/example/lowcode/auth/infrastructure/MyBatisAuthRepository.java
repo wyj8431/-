@@ -30,7 +30,8 @@ public class MyBatisAuthRepository implements AuthRepository {
         }
         Long tenantId = tenantMemberMapper.findPreferredTenantId(user.getId());
         String tenantStatus = tenantId == null ? null : tenantMapper.findStatusById(tenantId);
-        return Optional.of(new UserIdentity(user.getId(), tenantId, user.getPhone(), user.getStatus(), tenantStatus));
+        String tenantRole = tenantId == null ? null : tenantMemberMapper.findPreferredTenantRole(user.getId());
+        return Optional.of(new UserIdentity(user.getId(), tenantId, user.getPhone(), user.getStatus(), tenantStatus, tenantRole));
     }
 
     @Override
@@ -44,12 +45,13 @@ public class MyBatisAuthRepository implements AuthRepository {
         Long tenantId = tenantMemberMapper.findPreferredTenantIdForUpdate(user.getId());
         if (inserted != 1 || tenantId != null) {
             String tenantStatus = tenantId == null ? null : tenantMapper.findStatusByIdForUpdate(tenantId);
-            return new UserIdentity(user.getId(), tenantId, user.getPhone(), user.getStatus(), tenantStatus);
+            String tenantRole = tenantId == null ? null : tenantMemberMapper.findPreferredTenantRoleForUpdate(user.getId());
+            return new UserIdentity(user.getId(), tenantId, user.getPhone(), user.getStatus(), tenantStatus, tenantRole);
         }
 
         tenantMapper.insert(phone + " 的团队");
         long createdTenantId = tenantMapper.lastInsertedId();
-        tenantMemberMapper.insert(createdTenantId, user.getId(), "OWNER");
-        return new UserIdentity(user.getId(), createdTenantId, user.getPhone(), user.getStatus(), "ACTIVE");
+        tenantMemberMapper.insert(createdTenantId, user.getId(), "ADMIN");
+        return new UserIdentity(user.getId(), createdTenantId, user.getPhone(), user.getStatus(), "ACTIVE", "ADMIN");
     }
 }

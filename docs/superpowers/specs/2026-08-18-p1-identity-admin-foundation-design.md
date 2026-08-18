@@ -6,7 +6,7 @@
 
 ## 1. 目标
 
-为 All+poster 建立可撤销、可恢复的登录会话，以及最小可用的平台运营后台入口。首个 P1 纵切完成后，用户可以在短期访问令牌过期后无感恢复会话，账号退出或被撤销后不能继续刷新；服务端能够区分普通用户、运营和管理员；具备平台角色的用户可以进入一个受权限保护的管理端壳。租户内 `OWNER`、`ADMIN`、`MEMBER` 和设计稿 `OWNER`、`EDITOR`、`VIEWER` 保持现有语义，不被平台角色替代。
+为 All+poster 建立可撤销、可恢复的登录会话，以及最小可用的平台运营后台入口。首个 P1 纵切完成后，用户可以在短期访问令牌过期后无感恢复会话，账号退出或被撤销后不能继续刷新；服务端能够区分租户内的普通用户、运营和管理员；具备 `OPERATOR` 或 `ADMIN` 租户角色的用户可以进入一个受权限保护的管理端壳。租户成员角色为 `ADMIN`、`USER`、`OPERATOR`，设计稿 ACL 的 `OWNER`、`EDITOR`、`VIEWER` 保持独立。
 
 ## 2. 范围
 
@@ -15,9 +15,9 @@
 - 服务端刷新令牌的签发、轮换、撤销、过期清理和重放检测。
 - 手机号验证码首次验证成功时自动注册账号并创建默认团队；后续使用同一登录接口，不单独提供注册页面或注册接口。
 - 浏览器端会话恢复、并发请求下的单次刷新、401 后重试一次、统一登出和登录后返回原意图。
-- 平台角色 `USER`、`OPERATOR`、`ADMIN` 的数据模型、JWT 权限映射和服务端接口守卫。
+- 租户成员角色 `USER`、`OPERATOR`、`ADMIN` 的数据模型、JWT 权限映射和服务端接口守卫。
 - 最小管理端壳：受保护的 `/admin` 路由、当前用户/角色信息、健康状态和审计摘要入口；不实现模板、分类或素材 CRUD。
-- 审计日志模型与关键身份事件记录：登录成功/失败、刷新成功/失败、登出、刷新令牌重放、平台角色变更。
+- 审计日志模型与关键身份事件记录：登录成功/失败、刷新成功/失败、登出、刷新令牌重放、租户成员角色变更。
 - OpenAPI 文档、参数校验、统一错误响应和单元/集成/E2E 验收。
 
 ### 本次不包含
@@ -35,37 +35,41 @@
 
 每次刷新都执行令牌轮换：旧令牌标记为已替换，新令牌属于同一个 token family。已替换或已撤销令牌再次使用时，服务端撤销该 family 下所有令牌并返回 `UNAUTHORIZED`，防止被窃取的旧令牌继续使用。退出登录撤销当前令牌；“退出全部设备”撤销用户所有 family，并递增用户的 `security_version`。
 
-JWT 增加 `platformRole`、`securityVersion` 和现有 `tenantId` 声明。平台角色映射为 Spring Security 的 `ROLE_USER`、`ROLE_OPERATOR`、`ROLE_ADMIN`。访问令牌短期有效，角色变更会撤销刷新令牌并递增 `security_version`；已签发的访问令牌最多在其剩余 TTL 内有效，后台界面不把前端隐藏当作授权边界。
+JWT 增加 `tenantRole` 和现有 `tenantId` 声明。租户成员角色映射为 Spring Security 的 `ROLE_USER`、`ROLE_OPERATOR`、`ROLE_ADMIN`。访问令牌短期有效，角色变更会撤销该租户的刷新令牌；已签发的访问令牌最多在其剩余 TTL 内有效，后台界面不把前端隐藏当作授权边界。
 
-### 3.2 平台角色
+### 3.2 租户成员角色
 
-平台角色只有一列当前生效值，避免 P1 在没有多角色授权需求前引入复杂角色关联表：
+租户角色直接保存在 `sys_tenant_member.role`，同一用户在不同租户可以拥有不同角色，不新增全局 `sys_user.platform_role`：
 
 | 角色 | 能力 | 不能做的事 |
 | --- | --- | --- |
-| `USER` | 使用 ToC 工作台、查看自己的会话信息 | 进入 `/admin`、查看审计、修改平台角色 |
-| `OPERATOR` | 进入管理端壳、查看健康状态和审计摘要 | 修改平台角色、读取商家私有设计稿 |
-| `ADMIN` | 拥有运营能力并可调整平台角色、撤销用户会话 | 绕过租户 ACL 读取私有设计稿 |
+| `USER` | 使用 ToC 工作台、查看自己的会话信息 | 进入 `/admin`、查看审计、修改租户成员角色 |
+| `OPERATOR` | 进入管理端壳、查看健康状态和审计摘要 | 修改租户成员角色、读取商家私有设计稿 |
+| `ADMIN` | 拥有运营能力并可调整租户成员角色、撤销租户会话 | 绕过租户 ACL 读取私有设计稿 |
 
-平台角色与租户成员角色分别校验。管理端接口先检查平台角色，再执行资源级规则；设计稿接口仍只通过租户和设计稿 ACL 授权。
+租户成员角色与设计稿 ACL 分别校验。管理端接口先检查当前租户成员角色，再执行资源级规则；设计稿接口仍只通过租户和设计稿 ACL 授权。
 
 ### 3.3 管理端壳
 
-新增 `/admin` 路由和懒加载 `AdminShell.vue`。路由进入时先恢复会话，再检查 `OPERATOR` 或 `ADMIN`；未登录返回 `/` 并保留 `returnTo=/admin`，已登录但无权限显示 403 页面而不是重定向循环。首屏只展示当前账号、平台角色、API 健康状态和最近审计事件数量，所有后续管理菜单以不可用状态呈现并明确属于后续 P1 子阶段。
+新增 `/admin` 路由和懒加载 `AdminShell.vue`。路由进入时先恢复会话，再检查当前租户成员是否为 `OPERATOR` 或 `ADMIN`；未登录返回 `/` 并保留 `returnTo=/admin`，已登录但无权限显示 403 页面而不是重定向循环。首屏只展示当前账号、租户角色、API 健康状态和最近审计事件数量，所有后续管理菜单以不可用状态呈现并明确属于后续 P1 子阶段。
 
 ## 4. 数据模型
 
-新增 Flyway `V2__identity_admin_foundation.sql`，不修改已发布的 V1：
+新增 Flyway `V3__tenant_member_roles.sql`，不修改已发布的 V1/V2。
 
-### `sys_user` 增量字段
+### `sys_user` 会话版本字段（刷新令牌子阶段）
+
+刷新令牌子阶段仍需使用 `sys_user.security_version` 支持“退出全部设备”和账号级会话失效；该字段与租户成员角色独立，不是平台角色字段。本次角色迁移不新增该字段。
 
 ```sql
 ALTER TABLE sys_user
-    ADD COLUMN platform_role VARCHAR(16) NOT NULL DEFAULT 'USER' AFTER status,
-    ADD COLUMN security_version INT NOT NULL DEFAULT 0 AFTER platform_role,
-    ADD CONSTRAINT chk_user_platform_role CHECK (platform_role IN ('USER', 'OPERATOR', 'ADMIN')),
+    ADD COLUMN security_version INT NOT NULL DEFAULT 0 AFTER status,
     ADD CONSTRAINT chk_user_security_version CHECK (security_version >= 0);
 ```
+
+### `sys_tenant_member.role` 迁移
+
+V3 先移除 V1 的角色约束，把历史 `OWNER` 映射为 `ADMIN`、`MEMBER` 映射为 `USER`，再添加 `ADMIN / USER / OPERATOR` 约束。默认团队的首个成员角色为 `ADMIN`。
 
 ### `auth_refresh_token`
 
@@ -128,7 +132,7 @@ CREATE TABLE sys_audit_log (
 ### `POST /api/v1/auth/refresh`
 
 - 认证：刷新 Cookie。
-- 成功 `200`：`{ accessToken, tokenType: "Bearer", expiresIn, userId, tenantId, platformRole }`，并设置轮换后的刷新 Cookie。
+- 成功 `200`：`{ accessToken, tokenType: "Bearer", expiresIn, userId, tenantId, tenantRole }`，并设置轮换后的刷新 Cookie。
 - Cookie 缺失、过期、撤销、重放或账号状态异常：`401 UNAUTHORIZED`，同时清理 Cookie。
 - 事务内锁定旧令牌行，完成校验、替换和新令牌写入；并发刷新只有一个成功，其他请求得到 `401` 并触发前端重新登录。
 
@@ -141,35 +145,35 @@ CREATE TABLE sys_audit_log (
 ### `GET /api/v1/auth/me`
 
 - 认证：Bearer 访问令牌。
-- 成功：`{ userId, tenantId, phoneMasked, platformRole, tenantRole }`。
+- 成功：`{ userId, tenantId, phoneMasked, tenantRole }`。
 - 数据从当前用户和当前租户成员读取，不仅信任 JWT 中的角色声明。
 
 ### `GET /api/v1/admin/summary`
 
-- 认证：`ROLE_OPERATOR` 或 `ROLE_ADMIN`。
-- 成功：`{ platformRole, health: { api: "UP" }, audit: { recentEvents } }`。
+- 认证：当前租户成员角色为 `ROLE_OPERATOR` 或 `ROLE_ADMIN`。
+- 成功：`{ tenantRole, health: { api: "UP" }, audit: { recentEvents } }`。
 - `USER` 得到 `403 FORBIDDEN`；未登录得到 `401 UNAUTHORIZED`。
 - 不返回私有设计稿、模板草稿或完整用户列表。
 
-### `PATCH /api/v1/admin/users/{userId}/platform-role`
+### `PATCH /api/v1/admin/users/{userId}/tenant-role`
 
-- 认证：`ROLE_ADMIN`。
-- 请求：`{ platformRole: "USER" | "OPERATOR" | "ADMIN" }`。
-- 成功：返回用户的 `userId`、新角色和 `securityVersion`，撤销该用户所有刷新令牌。
-- 不能把最后一个 `ADMIN` 降级；目标用户不存在、已禁用或角色值非法分别返回统一错误码。
-- 记录成功或失败审计事件，不允许通过该接口改变租户成员角色。
+- 认证：当前租户成员角色为 `ROLE_ADMIN`。
+- 请求：`{ tenantRole: "USER" | "OPERATOR" | "ADMIN" }`。
+- 成功：返回用户的 `userId`、新租户角色，撤销该用户在当前租户的刷新令牌。
+- 不能把当前租户最后一个 `ADMIN` 降级；目标用户不存在、已禁用或角色值非法分别返回统一错误码。
+- 记录成功或失败审计事件；该接口只允许改变当前租户的成员角色，不得改变设计稿 ACL。
 
-现有 `POST /api/v1/auth/login` 保持兼容，但返回值增加 `platformRole`，成功登录时同时签发刷新 Cookie并创建审计事件。手机号验证码登录仍使用本地验证器，微信端口在后续子阶段接入。
+现有 `POST /api/v1/auth/login` 保持兼容，但返回值增加 `tenantRole`，成功登录时同时签发刷新 Cookie并创建审计事件。手机号验证码登录仍使用本地验证器，微信端口在后续子阶段接入。
 
-手机号账号采用无感注册：当手机号不存在且验证码校验成功时，事务内创建 `sys_user`、默认 `sys_tenant` 和 `OWNER` 成员关系，再签发会话；当手机号已存在时只执行账号、团队和会话状态校验。验证码错误、手机号格式错误或账号/团队被禁用时都不会创建新账号。
+手机号账号采用无感注册：当手机号不存在且验证码校验成功时，事务内创建 `sys_user`、默认 `sys_tenant` 和 `ADMIN` 成员关系，再签发会话；当手机号已存在时只执行账号、团队和成员角色状态校验。验证码错误、手机号格式错误或账号/团队被禁用时都不会创建新账号。
 
 ## 6. 前端数据流
 
 1. `main.ts` 创建 Pinia 后，路由守卫调用 `session.restore()`；若内存中没有访问令牌则尝试一次 `/auth/refresh`。
-2. `session` store 保存访问令牌、过期时间、用户/租户/平台角色和恢复状态，不持久化令牌。
+2. `session` store 保存访问令牌、过期时间、用户/租户/租户角色和恢复状态，不持久化令牌。
 3. `api/http.ts` 收到 `401` 时调用去重后的 `session.refresh()`，刷新成功后仅重试原请求一次；刷新失败则清空会话并触发路由跳转。
 4. 登录成功同时保存原有待执行模板意图和 `returnTo`，刷新页面或令牌轮换不丢失意图。
-5. 路由元信息使用 `meta.requiresAuth` 和 `meta.platformRoles`；页面隐藏菜单只用于体验，所有后台请求仍由服务端鉴权。
+5. 路由元信息使用 `meta.requiresAuth` 和 `meta.tenantRoles`；页面隐藏菜单只用于体验，所有后台请求仍由服务端鉴权。
 6. `/admin` 使用 `AdminShell.vue`，在加载态展示骨架；无权限显示 403；API 失败显示可重试状态，不把失败误报为“无数据”。
 
 ## 7. 错误与安全处理
@@ -187,7 +191,7 @@ CREATE TABLE sys_audit_log (
 
 - `JwtTokenServiceTest`：角色/版本声明、过期时间、短 secret 拒绝。
 - `RefreshTokenServiceTest`：签发、轮换、过期、撤销、重放检测、同 family 全量撤销。
-- `AuthServiceTest`：登录返回刷新 Cookie 所需结果、禁用用户拒绝、平台角色返回。
+- `AuthServiceTest`：登录返回刷新 Cookie 所需结果、禁用用户拒绝、租户角色返回。
 - `AdminAuthorizationTest`：USER 得到 403，OPERATOR 可读取 summary 但不能改角色，ADMIN 可改角色且最后一个 ADMIN 不可降级。
 - `AuditLogServiceTest`：敏感字段不落库，成功/失败事件和 request id 正确记录。
 - `AuthSecurityTest` / `BackendVerticalSliceIT`：真实 HTTP 流程覆盖登录、刷新、登出、401、403、角色变更后刷新失败和租户 ACL 不越权。
@@ -206,7 +210,7 @@ CREATE TABLE sys_audit_log (
 - 同一刷新令牌并发请求最多产生一个新会话；旧令牌再次使用会让整组刷新令牌失效。
 - 浏览器存储中不存在访问令牌或刷新令牌明文。
 - 普通用户无法通过直接请求管理端 API 读取 summary 或修改角色。
-- 修改平台角色会撤销目标用户刷新会话，且不改变其租户成员角色和设计稿 ACL。
+- 修改租户成员角色会撤销目标用户在当前租户的刷新会话，且不改变设计稿 ACL。
 - P0 的模板搜索、详情和设计稿创建流程保持通过。
 
 ## 9. 交付顺序
@@ -219,4 +223,4 @@ CREATE TABLE sys_audit_log (
 
 ## 10. 后续 P1 子阶段
 
-规格完成后再单独设计并实现：微信登录适配器、运营用户/模板/分类/素材管理、审计查询筛选、角色管理页面和 ToB 管理端导航。每个子阶段必须复用本规格定义的刷新令牌、平台角色、审计和租户 ACL 边界。
+规格完成后再单独设计并实现：微信登录适配器、租户成员/模板/分类/素材管理、审计查询筛选、角色管理页面和 ToB 管理端导航。每个子阶段必须复用本规格定义的刷新令牌、租户角色、审计和租户 ACL 边界。
