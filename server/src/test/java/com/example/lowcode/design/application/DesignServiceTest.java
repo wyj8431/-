@@ -116,7 +116,17 @@ class DesignServiceTest {
         }
 
         @Override
+        public List<TemplateQueryService.TemplateSummary> findPublishedByIds(List<Long> templateIds) {
+            return List.of();
+        }
+
+        @Override
         public List<TemplateQueryService.TemplateCategoryView> findPublishedCategories() {
+            return List.of();
+        }
+
+        @Override
+        public List<TemplateQueryService.TemplateTagView> findPublishedTags() {
             return List.of();
         }
 

@@ -114,8 +114,18 @@ class TemplateQueryServiceTest {
         }
 
         @Override
+        public List<TemplateQueryService.TemplateSummary> findPublishedByIds(List<Long> templateIds) {
+            return templateIds.contains(summary.id()) ? List.of(summary) : List.of();
+        }
+
+        @Override
         public List<TemplateQueryService.TemplateCategoryView> findPublishedCategories() {
             return List.of(new TemplateQueryService.TemplateCategoryView("marketing", "营销推广", null));
+        }
+
+        @Override
+        public List<TemplateQueryService.TemplateTagView> findPublishedTags() {
+            return List.of(new TemplateQueryService.TemplateTagView("promotion", "促销"));
         }
 
         @Override
