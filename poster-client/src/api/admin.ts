@@ -11,6 +11,8 @@ import type {
   TemplateAdminStatus,
   AdminTemplateTag,
   TemplateTagStatus,
+  CreateAdminTemplateTagInput,
+  UpdateAdminTemplateTagInput,
 } from './types'
 
 export function loadAdminSummary(accessToken?: string | null) {
@@ -140,6 +142,30 @@ export function changeAdminTemplateTagStatus(
   return request<AdminTemplateTag>(
     `/api/v1/admin/template-tags/${encodeURIComponent(code)}/status`,
     { method: 'PATCH', body: JSON.stringify({ status }) },
+    accessToken,
+  )
+}
+
+export function createAdminTemplateTag(input: CreateAdminTemplateTagInput, accessToken?: string | null) {
+  return request<AdminTemplateTag>(
+    '/api/v1/admin/template-tags',
+    { method: 'POST', body: JSON.stringify(input) },
+    accessToken,
+  )
+}
+
+export function updateAdminTemplateTag(code: string, input: UpdateAdminTemplateTagInput, accessToken?: string | null) {
+  return request<AdminTemplateTag>(
+    `/api/v1/admin/template-tags/${encodeURIComponent(code)}`,
+    { method: 'PATCH', body: JSON.stringify(input) },
+    accessToken,
+  )
+}
+
+export function deleteAdminTemplateTag(code: string, accessToken?: string | null) {
+  return request<null>(
+    `/api/v1/admin/template-tags/${encodeURIComponent(code)}`,
+    { method: 'DELETE' },
     accessToken,
   )
 }

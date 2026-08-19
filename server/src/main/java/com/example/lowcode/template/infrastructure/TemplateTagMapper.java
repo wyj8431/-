@@ -1,6 +1,9 @@
 package com.example.lowcode.template.infrastructure;
 
 import org.apache.ibatis.annotations.Mapper;
+import org.apache.ibatis.annotations.Delete;
+import org.apache.ibatis.annotations.Insert;
+import org.apache.ibatis.annotations.Options;
 import org.apache.ibatis.annotations.Param;
 import org.apache.ibatis.annotations.Select;
 import org.apache.ibatis.annotations.Update;
@@ -34,6 +37,30 @@ public interface TemplateTagMapper {
         WHERE code = #{code}
         """)
     int updateStatus(@Param("code") String code, @Param("status") String status);
+
+    @Insert("""
+        INSERT INTO template_tag (code, name, sort_order, status)
+        VALUES (#{code}, #{name}, #{sortOrder}, #{status})
+        """)
+    @Options(useGeneratedKeys = true, keyProperty = "id", keyColumn = "id")
+    int insert(AdminTagRow row);
+
+    @Update("""
+        UPDATE template_tag
+        SET name = #{name}, sort_order = #{sortOrder}
+        WHERE code = #{code}
+        """)
+    int updateDetails(
+        @Param("code") String code,
+        @Param("name") String name,
+        @Param("sortOrder") int sortOrder
+    );
+
+    @Select("SELECT COUNT(*) FROM template_tag_relation WHERE tag_id = #{tagId}")
+    int countTemplateRelations(@Param("tagId") long tagId);
+
+    @Delete("DELETE FROM template_tag WHERE id = #{tagId}")
+    int deleteById(@Param("tagId") long tagId);
 
     @Select("""
         SELECT COUNT(*)

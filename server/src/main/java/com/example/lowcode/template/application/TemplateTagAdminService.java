@@ -65,6 +65,80 @@ public class TemplateTagAdminService {
         return toView(tag);
     }
 
+    @Transactional
+    public TagView create(CurrentUser currentUser, String code, String name, Integer sortOrder) {
+        AuthRepository.UserIdentity actor = requireAdministrator(currentUser);
+        String normalizedCode = normalizeCode(code);
+        String normalizedName = normalizeName(name);
+        int normalizedSortOrder = normalizeSortOrder(sortOrder);
+        if (tagMapper.findByCode(normalizedCode) != null) {
+            throw new BusinessException(ErrorCode.VALIDATION_ERROR, "模板标签编码已存在");
+        }
+
+        TemplateTagMapper.AdminTagRow tag = new TemplateTagMapper.AdminTagRow();
+        tag.setCode(normalizedCode);
+        tag.setName(normalizedName);
+        tag.setSortOrder(normalizedSortOrder);
+        tag.setStatus("DRAFT");
+        if (tagMapper.insert(tag) != 1 || tag.getId() <= 0) {
+            throw new BusinessException(ErrorCode.INTERNAL_ERROR, "模板标签创建失败");
+        }
+        auditLogService.record(new AuditLogService.AuditEvent(
+            actor.userId(), currentUser.tenantId(), "TEMPLATE_TAG_CREATE", "TEMPLATE_TAG",
+            Long.toString(tag.getId()), AuditLogService.Outcome.SUCCESS, null,
+            Map.of("code", tag.getCode(), "name", tag.getName(), "sortOrder", tag.getSortOrder(), "status", tag.getStatus())
+        ));
+        return toView(tag);
+    }
+
+    @Transactional
+    public TagView update(CurrentUser currentUser, String code, String name, Integer sortOrder) {
+        AuthRepository.UserIdentity actor = requireAdministrator(currentUser);
+        String normalizedCode = normalizeCode(code);
+        String normalizedName = normalizeName(name);
+        int normalizedSortOrder = normalizeSortOrder(sortOrder);
+        TemplateTagMapper.AdminTagRow tag = tagMapper.findByCode(normalizedCode);
+        if (tag == null) {
+            throw new BusinessException(ErrorCode.NOT_FOUND, "标签不存在");
+        }
+        if (normalizedName.equals(tag.getName()) && normalizedSortOrder == tag.getSortOrder()) {
+            return toView(tag);
+        }
+        if (tagMapper.updateDetails(normalizedCode, normalizedName, normalizedSortOrder) != 1) {
+            throw new BusinessException(ErrorCode.NOT_FOUND, "标签不存在");
+        }
+        auditLogService.record(new AuditLogService.AuditEvent(
+            actor.userId(), currentUser.tenantId(), "TEMPLATE_TAG_UPDATE", "TEMPLATE_TAG",
+            Long.toString(tag.getId()), AuditLogService.Outcome.SUCCESS, null,
+            Map.of("code", normalizedCode, "fromName", tag.getName(), "toName", normalizedName,
+                "fromSortOrder", tag.getSortOrder(), "toSortOrder", normalizedSortOrder)
+        ));
+        tag.setName(normalizedName);
+        tag.setSortOrder(normalizedSortOrder);
+        return toView(tag);
+    }
+
+    @Transactional
+    public void delete(CurrentUser currentUser, String code) {
+        AuthRepository.UserIdentity actor = requireAdministrator(currentUser);
+        String normalizedCode = normalizeCode(code);
+        TemplateTagMapper.AdminTagRow tag = tagMapper.findByCode(normalizedCode);
+        if (tag == null) {
+            throw new BusinessException(ErrorCode.NOT_FOUND, "标签不存在");
+        }
+        if (tagMapper.countTemplateRelations(tag.getId()) > 0) {
+            throw new BusinessException(ErrorCode.TEMPLATE_TAG_IN_USE);
+        }
+        if (tagMapper.deleteById(tag.getId()) != 1) {
+            throw new BusinessException(ErrorCode.NOT_FOUND, "标签不存在");
+        }
+        auditLogService.record(new AuditLogService.AuditEvent(
+            actor.userId(), currentUser.tenantId(), "TEMPLATE_TAG_DELETE", "TEMPLATE_TAG",
+            Long.toString(tag.getId()), AuditLogService.Outcome.SUCCESS, null,
+            Map.of("code", tag.getCode(), "name", tag.getName(), "sortOrder", tag.getSortOrder(), "status", tag.getStatus())
+        ));
+    }
+
     private AuthRepository.UserIdentity requireManager(CurrentUser currentUser) {
         AuthRepository.UserIdentity actor = authRepository.findByUserAndTenant(currentUser.userId(), currentUser.tenantId())
             .orElseThrow(() -> new BusinessException(ErrorCode.UNAUTHORIZED, "登录已失效"));
@@ -80,7 +154,7 @@ public class TemplateTagAdminService {
     private AuthRepository.UserIdentity requireAdministrator(CurrentUser currentUser) {
         AuthRepository.UserIdentity actor = requireManager(currentUser);
         if (!"ADMIN".equals(actor.tenantRole())) {
-            throw new BusinessException(ErrorCode.FORBIDDEN, "仅管理员可修改模板标签状态");
+            throw new BusinessException(ErrorCode.FORBIDDEN, "仅管理员可管理模板标签");
         }
         return actor;
     }
@@ -100,6 +174,24 @@ public class TemplateTagAdminService {
     private String normalizeCode(String value) {
         if (value == null || !value.matches("[a-z0-9-]{1,64}")) {
             throw new BusinessException(ErrorCode.VALIDATION_ERROR, "模板标签编码无效");
+        }
+        return value;
+    }
+
+    private String normalizeName(String value) {
+        if (value == null) {
+            throw new BusinessException(ErrorCode.VALIDATION_ERROR, "模板标签名称无效");
+        }
+        String normalized = value.trim();
+        if (normalized.isEmpty() || normalized.length() > 128) {
+            throw new BusinessException(ErrorCode.VALIDATION_ERROR, "模板标签名称无效");
+        }
+        return normalized;
+    }
+
+    private int normalizeSortOrder(Integer value) {
+        if (value == null || value < 0 || value > 100_000) {
+            throw new BusinessException(ErrorCode.VALIDATION_ERROR, "模板标签排序无效");
         }
         return value;
     }

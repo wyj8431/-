@@ -1,5 +1,5 @@
 import { afterEach, describe, expect, it, vi } from 'vitest'
-import { changeAdminTemplateCategoryStatus, changeAdminTemplateStatus, changeAdminTemplateTagStatus, changeTenantRole, downloadAdminAuditLogs, loadAdminAuditLogs, loadAdminTemplateCategories, loadAdminTemplateTags, loadAdminTemplates, loadTenantMembers } from '@/api/admin'
+import { changeAdminTemplateCategoryStatus, changeAdminTemplateStatus, changeAdminTemplateTagStatus, changeTenantRole, createAdminTemplateTag, deleteAdminTemplateTag, downloadAdminAuditLogs, loadAdminAuditLogs, loadAdminTemplateCategories, loadAdminTemplateTags, loadAdminTemplates, loadTenantMembers, updateAdminTemplateTag } from '@/api/admin'
 
 describe('admin API', () => {
   afterEach(() => vi.unstubAllGlobals())
@@ -98,6 +98,22 @@ describe('admin API', () => {
 
     expect(fetchMock).toHaveBeenNthCalledWith(1, '/api/v1/admin/template-tags?status=DRAFT', expect.objectContaining({ credentials: 'include' }))
     expect(fetchMock).toHaveBeenNthCalledWith(2, '/api/v1/admin/template-tags/promotion/status', expect.objectContaining({ method: 'PATCH', body: JSON.stringify({ status: 'PUBLISHED' }) }))
+  })
+
+  it('creates, updates, and deletes template tags with typed commands', async () => {
+    const fetchMock = vi.fn()
+      .mockResolvedValueOnce(jsonResponse({ code: 'OK', message: 'success', data: { id: 21, code: 'holiday-sale', name: '节日促销', sortOrder: 20, status: 'DRAFT' } }))
+      .mockResolvedValueOnce(jsonResponse({ code: 'OK', message: 'success', data: { id: 21, code: 'holiday-sale', name: '节日活动', sortOrder: 30, status: 'DRAFT' } }))
+      .mockResolvedValueOnce(jsonResponse({ code: 'OK', message: 'success', data: null }))
+    vi.stubGlobal('fetch', fetchMock)
+
+    await expect(createAdminTemplateTag({ code: 'holiday-sale', name: '节日促销', sortOrder: 20 }, 'token')).resolves.toMatchObject({ code: 'holiday-sale', status: 'DRAFT' })
+    await expect(updateAdminTemplateTag('holiday-sale', { name: '节日活动', sortOrder: 30 }, 'token')).resolves.toMatchObject({ name: '节日活动', sortOrder: 30 })
+    await expect(deleteAdminTemplateTag('holiday-sale', 'token')).resolves.toBeNull()
+
+    expect(fetchMock).toHaveBeenNthCalledWith(1, '/api/v1/admin/template-tags', expect.objectContaining({ method: 'POST', body: JSON.stringify({ code: 'holiday-sale', name: '节日促销', sortOrder: 20 }) }))
+    expect(fetchMock).toHaveBeenNthCalledWith(2, '/api/v1/admin/template-tags/holiday-sale', expect.objectContaining({ method: 'PATCH', body: JSON.stringify({ name: '节日活动', sortOrder: 30 }) }))
+    expect(fetchMock).toHaveBeenNthCalledWith(3, '/api/v1/admin/template-tags/holiday-sale', expect.objectContaining({ method: 'DELETE' }))
   })
 
   it('downloads filtered audit logs as a CSV Blob', async () => {

@@ -158,6 +158,17 @@ export interface AdminTemplateTag {
   status: TemplateTagStatus
 }
 
+export interface CreateAdminTemplateTagInput {
+  code: string
+  name: string
+  sortOrder: number
+}
+
+export interface UpdateAdminTemplateTagInput {
+  name: string
+  sortOrder: number
+}
+
 export type TemplateAdminStatus = 'DRAFT' | 'PUBLISHED' | 'DISABLED'
 
 export interface AdminTemplate {

@@ -158,6 +158,37 @@ class DatabaseMigrationIT extends MySqlIntegrationTestSupport {
     }
 
     @Test
+    void v5MakesTemplateTagIdAutoIncrement() {
+        String extra = jdbcTemplate.queryForObject(
+            """
+                SELECT extra FROM information_schema.columns
+                WHERE table_schema = DATABASE()
+                  AND table_name = 'template_tag'
+                  AND column_name = 'id'
+                """,
+            String.class
+        );
+
+        assertThat(extra).contains("auto_increment");
+    }
+
+    @Test
+    void v5PreservesTemplateTagRelationForeignKey() {
+        Integer foreignKeyCount = jdbcTemplate.queryForObject(
+            """
+                SELECT COUNT(*) FROM information_schema.table_constraints
+                WHERE constraint_schema = DATABASE()
+                  AND table_name = 'template_tag_relation'
+                  AND constraint_name = 'fk_template_tag_relation_tag'
+                  AND constraint_type = 'FOREIGN KEY'
+                """,
+            Integer.class
+        );
+
+        assertThat(foreignKeyCount).isEqualTo(1);
+    }
+
+    @Test
     void v3UsesOnlyTheThreeTenantRoles() {
         assertThat(jdbcTemplate.queryForObject(
             "SELECT COUNT(*) FROM sys_tenant_member WHERE role IN ('OWNER', 'MEMBER')",
