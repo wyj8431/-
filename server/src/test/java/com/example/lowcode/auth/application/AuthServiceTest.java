@@ -2,15 +2,20 @@ package com.example.lowcode.auth.application;
 
 import com.example.lowcode.auth.security.JwtTokenService;
 import com.example.lowcode.common.exception.BusinessException;
+import com.fasterxml.jackson.databind.ObjectMapper;
 import org.junit.jupiter.api.Test;
 
 import java.time.Duration;
+import java.time.Clock;
+import java.time.Instant;
+import java.time.ZoneOffset;
 import java.util.HashMap;
 import java.util.Map;
 import java.util.Optional;
 
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
+import static org.mockito.Mockito.mock;
 
 class AuthServiceTest {
     private final InMemoryAuthRepository userRepository = new InMemoryAuthRepository();
@@ -78,6 +83,33 @@ class AuthServiceTest {
             .hasMessageContaining("团队");
 
         assertThat(userRepository.count()).isEqualTo(1);
+    }
+
+    @Test
+    void successfulLoginCreatesRefreshSessionWithoutReturningPlainTokenToJsonLayer() throws Exception {
+        RefreshTokenRepository refreshRepository = mock(RefreshTokenRepository.class);
+        RefreshTokenService refreshService = new RefreshTokenService(
+            refreshRepository,
+            new JwtTokenService("test-signing-secret-must-have-at-least-thirty-two-bytes", Duration.ofMinutes(15)),
+            Clock.fixed(Instant.parse("2026-08-18T08:00:00Z"), ZoneOffset.UTC),
+            Duration.ofDays(30)
+        );
+        AuthService sessionService = new AuthService(
+            userRepository,
+            (phone, verificationCode) -> "123456".equals(verificationCode),
+            new JwtTokenService("test-signing-secret-must-have-at-least-thirty-two-bytes", Duration.ofMinutes(15)),
+            refreshService,
+            null
+        );
+
+        AuthService.LoginResult result = sessionService.login(
+            new AuthService.LoginCommand("13800000000", "123456"),
+            "browser",
+            "127.0.0.1"
+        );
+
+        assertThat(result.refreshToken()).isNotBlank();
+        assertThat(new ObjectMapper().writeValueAsString(result)).doesNotContain(result.refreshToken());
     }
 
     private static final class InMemoryAuthRepository implements AuthRepository {

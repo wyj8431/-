@@ -1,54 +1,115 @@
 <script setup lang="ts">
-import { X, LogIn } from 'lucide-vue-next'
-import { ref } from 'vue'
+import { ArrowLeft, CheckCircle2, Eye, EyeOff, QrCode, Smartphone, X } from 'lucide-vue-next'
+import { ref, watch } from 'vue'
+import { authProviderIcons } from './auth-icons'
+import wechatQrCode from '@/assets/auth-icons/reference/wechat-qr.png'
 
-withDefaults(defineProps<{
-  open: boolean
-  loading?: boolean
-  error?: string | null
-}>(), { loading: false, error: null })
+type LoginMode = 'phone' | 'qr' | 'password' | 'register'
 
-const emit = defineEmits<{
-  close: []
-  login: [payload: { phone: string; verificationCode: string }]
-}>()
+const props = withDefaults(defineProps<{ open: boolean; loading?: boolean; error?: string | null }>(), { loading: false, error: null })
+const emit = defineEmits<{ close: []; login: [payload: { phone: string; verificationCode: string }] }>()
 
+const mode = ref<LoginMode>('phone')
+const localNotice = ref<string | null>(null)
 const phone = ref('')
 const verificationCode = ref('')
+const account = ref('')
+const password = ref('')
+const registerPassword = ref('')
+const confirmPassword = ref('')
+const showPassword = ref(false)
+
+function setMode(next: LoginMode) { localNotice.value = null; mode.value = next; showPassword.value = false }
+function unsupported(label: string) { localNotice.value = `${label}将在后续阶段开放，请使用手机号验证码登录` }
+function submit() { emit('login', { phone: phone.value, verificationCode: verificationCode.value }) }
+function completeRegistration() { setMode('phone'); localNotice.value = '手机号验证成功后会自动注册账号，请使用手机号验证码登录' }
+function useProvider(key: typeof authProviderIcons[number]['key'], label: string) { if (key === 'phone') setMode('phone'); else unsupported(label) }
+watch(() => props.open, (open, wasOpen) => { if (open && !wasOpen) { mode.value = 'phone'; localNotice.value = null; showPassword.value = false } })
 </script>
 
 <template>
-  <div v-if="open" class="dialog-backdrop" role="presentation" @click.self="emit('close')">
-    <section class="dialog login-dialog" role="dialog" aria-modal="true" aria-labelledby="login-dialog-title">
-      <header class="dialog-header">
-        <div>
-          <p class="eyebrow">Account / sign in</p>
-          <h2 id="login-dialog-title">登录后继续</h2>
-        </div>
-        <button class="icon-button" type="button" aria-label="关闭登录" @click="emit('close')"><X :size="18" /></button>
-      </header>
-      <form class="dialog-body login-form" @submit.prevent="emit('login', { phone, verificationCode })">
-        <p class="login-copy">登录后会自动恢复这一次模板选择，不会丢失当前浏览位置。</p>
-        <label class="form-field">
-          手机号
-          <input v-model="phone" name="phone" inputmode="tel" autocomplete="tel" placeholder="请输入手机号" required />
-        </label>
-        <label class="form-field">
-          验证码
-          <input v-model="verificationCode" name="verificationCode" inputmode="numeric" autocomplete="one-time-code" placeholder="请输入验证码" required />
-        </label>
-        <p v-if="error" class="form-error" role="alert">{{ error }}</p>
-        <button class="dialog-primary login-submit" type="submit" :disabled="loading">
-          <LogIn :size="16" aria-hidden="true" />
-          {{ loading ? '登录中…' : '登录并继续' }}
-        </button>
-      </form>
+  <div v-if="open" class="auth-backdrop" role="presentation" @click.self="emit('close')">
+    <section class="auth-dialog" role="dialog" aria-modal="true" aria-label="登录后继续">
+      <aside class="auth-promo" aria-hidden="true">
+        <div class="auth-promo-brand"><span class="auth-promo-mark">+</span><span>创客贴</span></div>
+        <div class="auth-promo-copy"><strong>让设计<br />触手可得！</strong><i /></div>
+        <ul class="auth-promo-points">
+          <li><CheckCircle2 :size="21" /> 只需一步极速注册登录</li><li><CheckCircle2 :size="21" /> 100W+ 优质模板每日更新</li><li><CheckCircle2 :size="21" /> 1亿+版权素材商用无忧</li><li><CheckCircle2 :size="21" /> AI智能工具助力轻松创作</li><li><CheckCircle2 :size="21" /> 一键高清无水印下载</li><li><CheckCircle2 :size="21" /> 免费在线设计 支持多人协作</li>
+        </ul>
+      </aside>
+      <main class="auth-main">
+        <button class="auth-close" type="button" aria-label="关闭登录" @click="emit('close')"><X :size="25" /></button>
+        <template v-if="mode === 'phone'">
+          <button class="auth-corner-switch" type="button" aria-label="微信登录在这里" @click="setMode('qr')"><span>微信登录在这里</span><QrCode :size="30" aria-hidden="true" /></button>
+          <section class="auth-panel auth-phone-panel" aria-labelledby="login-dialog-title"><h2 id="login-dialog-title">手机验证码登录</h2><form class="auth-form" @submit.prevent="submit">
+            <label class="auth-field"><span class="sr-only">手机号</span><input v-model="phone" name="phone" inputmode="tel" autocomplete="tel" placeholder="输入手机号" required /></label>
+            <div class="auth-code-row"><label class="auth-field"><span class="sr-only">验证码</span><input v-model="verificationCode" name="verificationCode" inputmode="numeric" autocomplete="one-time-code" placeholder="输入短信验证码" required /></label><button class="auth-code-button" type="button" @click="unsupported('获取验证码')">获取验证码</button></div>
+            <p v-if="error" class="auth-error" role="alert">{{ error }}</p><p v-if="localNotice" class="auth-notice" role="status">{{ localNotice }}</p><button class="auth-submit" type="submit" :disabled="loading">{{ loading ? '登录中...' : '登录' }}</button>
+          </form><div class="auth-actions"><button type="button" @click="setMode('password')">账号密码登录</button><button type="button" @click="unsupported('忘记密码')">忘记密码</button></div><div class="auth-providers" aria-label="其他登录方式"><div class="auth-divider"><span>其他登录方式</span></div><div class="auth-provider-list"><button v-for="provider in authProviderIcons" :key="provider.key" class="auth-provider" type="button" :aria-label="provider.label" @click="useProvider(provider.key, provider.label)"><img :src="provider.src" :alt="provider.label" /></button></div></div></section>
+        </template>
+        <template v-else-if="mode === 'qr'">
+          <button class="auth-corner-switch" type="button" aria-label="验证码登录在这里" @click="setMode('phone')"><span>验证码登录在这里</span><Smartphone :size="28" aria-hidden="true" /></button>
+          <section class="auth-panel auth-qr-panel" aria-labelledby="login-dialog-title"><h2 id="login-dialog-title"><span>微信扫码</span>安全登录</h2><p class="auth-qr-copy">未在创客贴内完成绑定的微信和手机号，是两个独立账号</p><div class="qr-frame" aria-label="微信登录二维码"><img class="qr-image" :src="wechatQrCode" alt="" /></div><p class="auth-scan-help">扫码登录遇到问题？ <button type="button" @click="unsupported('扫码登录帮助')">点击这里</button></p><div class="auth-providers" aria-label="其他登录方式"><div class="auth-divider"><span>其他登录方式</span></div><div class="auth-provider-list"><button v-for="provider in authProviderIcons" :key="provider.key" class="auth-provider" type="button" :aria-label="provider.label" @click="useProvider(provider.key, provider.label)"><img :src="provider.src" :alt="provider.label" /></button></div></div><p v-if="localNotice" class="auth-notice" role="status">{{ localNotice }}</p></section>
+        </template>
+        <template v-else-if="mode === 'password'">
+          <button class="auth-corner-switch" type="button" aria-label="微信登录在这里" @click="setMode('qr')"><span>微信登录在这里</span><QrCode :size="30" aria-hidden="true" /></button>
+          <section class="auth-panel auth-password-panel" aria-labelledby="login-dialog-title"><h2 id="login-dialog-title">账号密码登录</h2><form class="auth-form" @submit.prevent="unsupported('账号密码登录')"><label class="auth-field"><span class="sr-only">邮箱或手机号</span><input v-model="account" name="account" autocomplete="username" placeholder="输入邮箱/手机号" required /></label><label class="auth-field auth-password-field"><span class="sr-only">密码</span><input v-model="password" name="password" :type="showPassword ? 'text' : 'password'" autocomplete="current-password" placeholder="输入密码" required /><button class="auth-password-toggle" type="button" :aria-label="showPassword ? '隐藏密码' : '显示密码'" :title="showPassword ? '隐藏密码' : '显示密码'" @click="showPassword = !showPassword"><EyeOff v-if="showPassword" :size="20" aria-hidden="true" /><Eye v-else :size="20" aria-hidden="true" /></button></label><p v-if="localNotice" class="auth-notice" role="status">{{ localNotice }}</p><button class="auth-submit" type="submit">登录</button></form><div class="auth-actions"><button type="button" @click="setMode('phone')">手机号验证码登录</button><button type="button" @click="unsupported('忘记密码')">忘记密码</button></div><div class="auth-providers" aria-label="其他登录方式"><div class="auth-divider"><span>其他登录方式</span></div><div class="auth-provider-list"><button v-for="provider in authProviderIcons" :key="provider.key" class="auth-provider" type="button" :aria-label="provider.label" @click="useProvider(provider.key, provider.label)"><img :src="provider.src" :alt="provider.label" /></button></div></div></section>
+        </template>
+        <template v-else>
+          <section class="auth-panel auth-register-panel" aria-labelledby="login-dialog-title"><button class="auth-back-link" type="button" @click="setMode('phone')"><ArrowLeft :size="19" /> 返回登录</button><h2 id="login-dialog-title">注册账号</h2><form class="auth-form" @submit.prevent="completeRegistration"><label class="auth-field"><span class="sr-only">手机号</span><input v-model="phone" name="registerPhone" inputmode="tel" autocomplete="tel" placeholder="输入手机号" required /></label><div class="auth-code-row"><label class="auth-field"><span class="sr-only">验证码</span><input v-model="verificationCode" name="registerVerificationCode" inputmode="numeric" autocomplete="one-time-code" placeholder="输入验证码" required /></label><button class="auth-code-button" type="button" @click="unsupported('获取验证码')">获取验证码</button></div><label class="auth-field"><span class="sr-only">密码</span><input v-model="registerPassword" name="registerPassword" type="password" autocomplete="new-password" placeholder="输入6-18位密码" required /></label><label class="auth-field"><span class="sr-only">确认密码</span><input v-model="confirmPassword" name="confirmPassword" type="password" autocomplete="new-password" placeholder="确认密码" required /></label><button class="auth-submit" type="submit">立即注册</button></form></section>
+        </template>
+        <footer class="auth-footer"><span>{{ mode === 'register' ? '注册即同意' : '登录即同意' }}</span> <button type="button" @click="unsupported('用户协议')">用户协议</button>、<button type="button" @click="unsupported('隐私政策')">隐私政策</button><button v-if="mode !== 'register'" class="auth-register-link" type="button" @click="setMode('register')">手机号码注册</button></footer>
+      </main>
     </section>
   </div>
 </template>
 
 <style scoped>
-.login-dialog { width: min(100%, 460px); }
-.login-copy { margin: 0; color: var(--muted); font-size: 12px; line-height: 1.6; }
-.login-submit { justify-content: center; margin-top: 5px; }
+.auth-backdrop { position: fixed; inset: 0; z-index: 60; display: grid; place-items: center; padding: 32px 72px; overflow: auto; background: rgba(21, 29, 43, .56); backdrop-filter: blur(2px); }
+.auth-dialog { position: relative; display: grid; width: min(1140px, calc(100vw - 144px)); min-height: 750px; grid-template-columns: 36.3% minmax(0, 63.7%); color: #25314a; }
+.auth-promo, .auth-main { min-width: 0; }
+.auth-promo { position: relative; display: flex; min-height: 750px; flex-direction: column; overflow: hidden; padding: 34px 37px 48px; border-radius: 10px 0 0 10px; background-color: #1478f8; background-image: radial-gradient(circle at 7% 8%, rgba(61, 142, 255, .98) 0 31px, transparent 32px), radial-gradient(circle at 63% 9%, rgba(70, 146, 255, .9) 0 48px, transparent 49px), radial-gradient(circle at 97% 34%, rgba(66, 145, 255, .92) 0 47px, transparent 48px), radial-gradient(circle at 24% 56%, rgba(62, 141, 255, .95) 0 43px, transparent 44px), radial-gradient(circle at 78% 74%, rgba(65, 144, 255, .94) 0 51px, transparent 52px); background-size: 130px 130px; color: #fff; }
+.auth-promo::before { position: absolute; inset: 0; background: repeating-linear-gradient(90deg, transparent 0 70px, rgba(1, 103, 235, .16) 70px 73px, transparent 73px 130px), repeating-linear-gradient(0deg, transparent 0 70px, rgba(1, 103, 235, .16) 70px 73px, transparent 73px 130px); content: ''; opacity: .8; }
+.auth-promo > * { position: relative; z-index: 1; }
+.auth-promo-brand { display: inline-flex; align-items: center; gap: 7px; font-size: 29px; font-weight: 700; line-height: 1; }.auth-promo-mark { display: inline-grid; width: 36px; height: 36px; place-items: center; border-radius: 9px 12px 10px 5px; background: #fff; color: #1478f8; font-size: 30px; font-weight: 800; transform: rotate(-12deg); }
+.auth-promo-copy { margin: 133px 0 auto; }.auth-promo-copy strong { display: block; color: #fffde1; font-family: KaiTi, STKaiti, serif; font-size: 52px; font-weight: 700; line-height: 1.08; text-align: center; }.auth-promo-copy i { display: block; width: 272px; height: 17px; margin: 11px auto 0; border-bottom: 5px solid #dcf100; border-radius: 50%; transform: rotate(-7deg); }
+.auth-promo-points { display: grid; gap: 18px; padding: 0; margin: auto 0 3px; list-style: none; font-size: 18px; font-weight: 500; line-height: 1.25; white-space: nowrap; }.auth-promo-points li { display: flex; align-items: center; gap: 10px; }.auth-promo-points svg { flex: 0 0 auto; color: #e5f1ff; fill: #e5f1ff; stroke: #1478f8; }
+.auth-main { position: relative; display: flex; min-height: 750px; flex-direction: column; overflow: hidden; padding: 0 70px 36px; border-radius: 0 10px 10px 0; background: #fff; box-shadow: 0 30px 80px rgba(16, 29, 54, .34); }
+.auth-close { position: absolute; z-index: 2; top: 0; right: -58px; display: grid; width: 37px; height: 37px; place-items: center; border: 3px solid #fff; border-radius: 50%; background: rgba(13, 23, 40, .12); color: #fff; }.auth-close:hover { background: #fff; color: #697993; }
+.auth-corner-switch { position: absolute; z-index: 1; top: 15px; right: 20px; display: inline-flex; height: 42px; align-items: flex-start; gap: 10px; padding: 0; border: 0; background: transparent; color: #1478f8; font-size: 16px; line-height: 32px; }.auth-corner-switch::before { position: absolute; top: 0; right: 35px; width: 152px; height: 32px; border: 1px solid #1478f8; border-radius: 5px 0 0 5px; content: ''; }.auth-corner-switch::after { position: absolute; top: 17px; right: 23px; width: 24px; height: 24px; border-top: 1px solid #1478f8; background: #fff; content: ''; transform: rotate(45deg); }.auth-corner-switch span, .auth-corner-switch svg { position: relative; z-index: 1; }.auth-corner-switch span { padding: 0 11px; white-space: nowrap; }.auth-corner-switch svg { margin-top: 2px; color: #91a2bd; }
+.auth-panel { display: grid; width: min(100%, 540px); align-self: center; justify-items: stretch; }.auth-phone-panel, .auth-password-panel { margin-top: 83px; }.auth-panel h2 { margin: 0 0 45px; color: #2e3138; font-size: 32px; font-weight: 700; line-height: 1.2; text-align: center; }.auth-qr-panel h2 { margin-bottom: 14px; }.auth-qr-panel h2 span { color: #1478f8; }
+.auth-form { display: grid; gap: 24px; width: 100%; }.auth-field { display: grid; min-width: 0; }.auth-field input { box-sizing: border-box; width: 100%; height: 60px; padding: 0 20px; border: 1px solid #e4e8f0; border-radius: 10px; outline: 0; background: #fff; color: #25314a; font-size: 20px; line-height: 1; transition: border-color .18s ease, box-shadow .18s ease; }.auth-field input::placeholder { color: #91a0bb; }.auth-field input:focus { border-color: #1478f8; box-shadow: 0 0 0 3px rgba(20, 120, 248, .12); }.auth-password-field { position: relative; display: block; }.auth-password-field input { padding-right: 58px; }.auth-password-toggle { position: absolute; top: 50%; right: 15px; display: grid; width: 32px; height: 32px; place-items: center; padding: 0; border: 0; border-radius: 6px; background: transparent; color: #8997ac; transform: translateY(-50%); }.auth-password-toggle:hover, .auth-password-toggle:focus-visible { background: #f1f5fb; color: #1478f8; outline: 0; }.auth-code-row { display: grid; grid-template-columns: minmax(0, 1fr) 180px; gap: 16px; }.auth-code-button { height: 60px; border: 1px solid #e4e8f0; border-radius: 10px; background: #fff; color: #25314a; font-size: 18px; }.auth-code-button:hover { border-color: #1478f8; color: #1478f8; }.auth-submit { height: 60px; margin-top: 12px; border: 0; border-radius: 10px; background: #1478f8; color: #fff; font-size: 21px; font-weight: 500; }.auth-submit:hover:not(:disabled) { background: #086ce9; }.auth-submit:disabled { cursor: wait; opacity: .65; }
+.auth-error, .auth-notice { margin: -8px 0 -8px; font-size: 14px; line-height: 1.5; text-align: center; }.auth-error { color: #e44d60; }.auth-notice { color: #5c6c84; }.auth-actions { display: flex; align-items: center; justify-content: space-between; margin-top: 24px; }.auth-actions button, .auth-scan-help button, .auth-footer button { padding: 0; border: 0; background: transparent; color: #1478f8; font-size: 17px; }.auth-actions button:last-child { color: #3e4652; }.auth-actions button:hover, .auth-scan-help button:hover, .auth-footer button:hover { text-decoration: underline; text-underline-offset: 3px; }
+.auth-providers { margin-top: 72px; }.auth-divider { display: flex; align-items: center; gap: 18px; color: #9ba3b2; font-size: 16px; text-align: center; }.auth-divider::before, .auth-divider::after { height: 1px; flex: 1; border-top: 1px dashed #dce2eb; content: ''; }.auth-provider-list { display: flex; justify-content: center; gap: 22px; margin-top: 28px; }.auth-provider { display: grid; width: 54px; height: 54px; place-items: center; padding: 0; border: 0; border-radius: 11px; background: #f4f7fc; }.auth-provider:hover { outline: 2px solid rgba(20, 120, 248, .32); outline-offset: 2px; }.auth-provider img { display: block; width: 31px; height: 31px; object-fit: contain; }
+.auth-qr-panel { justify-items: center; margin-top: 80px; }.auth-qr-copy { margin: 0 0 36px; color: #8c9ab3; font-size: 17px; line-height: 1.5; text-align: center; }.qr-frame { position: relative; width: 238px; height: 238px; overflow: hidden; border: 1px solid #e4e8f0; border-radius: 11px; background: repeating-linear-gradient(90deg, #111 0 7px, #fff 7px 13px), repeating-linear-gradient(#111 0 7px, #fff 7px 13px); box-shadow: inset 0 0 0 20px #fff; }.qr-noise { position: absolute; inset: 34px; background: repeating-linear-gradient(45deg, transparent 0 5px, #fff 5px 9px, transparent 9px 15px), repeating-linear-gradient(-52deg, transparent 0 6px, #111 6px 10px, transparent 10px 16px); mix-blend-mode: screen; opacity: .95; }.qr-finder { position: absolute; z-index: 2; width: 52px; height: 52px; border: 8px solid #111; background: #fff; box-shadow: inset 0 0 0 8px #111; }.finder-one { top: 18px; left: 18px; }.finder-two { top: 18px; right: 18px; }.finder-three { bottom: 18px; left: 18px; }.auth-scan-help { margin: 24px 0 0; color: #99a4b9; font-size: 16px; }.auth-scan-help button { font-size: inherit; }.auth-qr-panel .auth-providers { width: 100%; margin-top: 41px; }.auth-qr-panel .auth-provider-list { gap: 22px; margin-top: 22px; }.auth-qr-panel .auth-notice { margin-top: 18px; }
+.auth-register-panel { position: relative; margin-top: 78px; }.auth-register-panel h2 { margin-bottom: 48px; }.auth-register-panel .auth-form { gap: 24px; }.auth-register-panel .auth-submit { margin-top: 12px; }.auth-back-link { position: absolute; top: -31px; left: -50px; display: inline-flex; align-items: center; gap: 4px; padding: 0; border: 0; background: transparent; color: #4c5a73; font-size: 19px; font-weight: 600; }.auth-back-link:hover { color: #1478f8; }
+.auth-footer { display: flex; min-height: 54px; align-items: center; gap: 6px; margin-top: auto; padding: 0 18px; border-radius: 10px; background: #f6f7fb; color: #9aa5b9; font-size: 16px; }.auth-footer button { color: #26354d; font-size: inherit; }.auth-footer .auth-register-link { margin-left: auto; color: #1478f8; }.sr-only { position: absolute; width: 1px; height: 1px; padding: 0; margin: -1px; overflow: hidden; clip: rect(0, 0, 0, 0); white-space: nowrap; border: 0; }
+@media (max-width: 1040px) { .auth-backdrop { padding: 24px 50px; }.auth-dialog { width: min(100%, 940px); }.auth-main { padding-right: 48px; padding-left: 48px; }.auth-promo { padding-right: 28px; padding-left: 28px; }.auth-promo-copy strong { font-size: 43px; }.auth-promo-copy i { width: 226px; }.auth-promo-points { font-size: 15px; }.auth-provider-list { gap: 14px; } }
+@media (max-width: 720px) { .auth-backdrop { display: block; padding: 12px; }.auth-dialog { display: block; width: 100%; min-height: 0; }.auth-promo { min-height: 184px; padding: 22px 24px; border-radius: 10px 10px 0 0; }.auth-promo-copy { display: none; }.auth-promo-points { grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 10px 14px; margin: auto 0 0; font-size: 12px; white-space: normal; }.auth-promo-points li { align-items: flex-start; gap: 5px; }.auth-promo-points svg { width: 15px; height: 15px; margin-top: 1px; }.auth-main { min-height: min(675px, calc(100vh - 208px)); padding: 74px 22px 18px; border-radius: 0 0 10px 10px; }.auth-close { top: -174px; right: 14px; }.auth-corner-switch { top: 17px; right: 16px; transform: scale(.87); transform-origin: top right; }.auth-panel { width: 100%; }.auth-phone-panel, .auth-password-panel, .auth-qr-panel, .auth-register-panel { margin-top: 0; }.auth-panel h2 { margin-bottom: 34px; font-size: 27px; }.auth-field input, .auth-code-button, .auth-submit { height: 54px; font-size: 16px; }.auth-code-row { grid-template-columns: minmax(0, 1fr) 126px; gap: 10px; }.auth-form { gap: 16px; }.auth-submit { margin-top: 6px; }.auth-actions { margin-top: 18px; }.auth-actions button { font-size: 15px; }.auth-providers { margin-top: 42px; }.auth-divider { gap: 12px; font-size: 14px; }.auth-provider-list { gap: 9px; margin-top: 18px; }.auth-provider { width: 42px; height: 42px; border-radius: 9px; }.auth-provider img { width: 25px; height: 25px; }.auth-footer { min-height: 48px; margin-top: 24px; padding: 0 12px; font-size: 13px; }.auth-register-link { white-space: nowrap; }.auth-qr-panel { min-height: 0; }.auth-qr-panel h2 { margin-bottom: 12px; }.auth-qr-copy { margin-bottom: 22px; font-size: 14px; }.qr-frame { width: 190px; height: 190px; }.qr-finder { width: 42px; height: 42px; border-width: 6px; box-shadow: inset 0 0 0 6px #111; }.finder-one { top: 16px; left: 16px; }.finder-two { top: 16px; right: 16px; }.finder-three { bottom: 16px; left: 16px; }.auth-scan-help { margin-top: 16px; font-size: 14px; }.auth-qr-panel .auth-providers { margin-top: 28px; }.auth-register-panel { padding-top: 19px; }.auth-back-link { position: static; justify-self: start; margin-bottom: 32px; font-size: 16px; }.auth-register-panel h2 { margin-bottom: 34px; } }
+@media (max-width: 420px) { .auth-promo-points { font-size: 11px; }.auth-footer { gap: 4px; font-size: 12px; }.auth-footer .auth-register-link { font-size: 12px; }.auth-provider-list { gap: 7px; }.auth-provider { width: 40px; height: 40px; } }
+</style>
+
+<style scoped>
+.qr-image { display: block; width: 100%; height: 100%; object-fit: cover; }
+</style>
+
+<style scoped>
+/* Compact reference proportion for the homepage dialog. */
+.auth-backdrop { padding: 20px 44px; }
+.auth-dialog { width: min(900px, calc(100vw - 88px)); min-height: 590px; }
+.auth-promo { min-height: 590px; padding: 26px 29px 34px; background-size: 105px 105px; }
+.auth-promo::before { background-size: 105px 105px; }
+.auth-promo-brand { gap: 5px; font-size: 23px; }.auth-promo-mark { width: 29px; height: 29px; border-radius: 7px 10px 8px 4px; font-size: 24px; }
+.auth-promo-copy { margin: 85px 0 auto; }.auth-promo-copy strong { font-size: 41px; }.auth-promo-copy i { width: 217px; height: 12px; margin-top: 9px; border-bottom-width: 4px; }
+.auth-promo-points { gap: 15px; margin-bottom: 0; font-size: 15px; }.auth-promo-points li { gap: 8px; }.auth-promo-points svg { width: 17px; height: 17px; }
+.auth-main { min-height: 590px; padding: 0 55px 27px; overflow: visible; }.auth-close { top: 8px; right: -50px; width: 32px; height: 32px; border: 2px solid rgba(255, 255, 255, .92); background: rgba(73, 78, 86, .72); color: #fff; }.auth-close :deep(svg) { width: 19px; height: 19px; }
+.auth-corner-switch { top: 10px; right: 14px; transform: scale(.8); transform-origin: top right; }
+.auth-panel { width: min(100%, 417px); }.auth-phone-panel, .auth-password-panel { margin-top: 62px; }.auth-panel h2 { margin-bottom: 35px; font-size: 27px; }.auth-qr-panel h2 { margin-bottom: 11px; }
+.auth-form { gap: 17px; }.auth-field input { height: 49px; padding: 0 15px; border-radius: 8px; font-size: 17px; }.auth-code-row { grid-template-columns: minmax(0, 1fr) 144px; gap: 12px; }.auth-code-button { height: 49px; border-radius: 8px; font-size: 16px; }.auth-submit { height: 50px; margin-top: 5px; border-radius: 8px; font-size: 18px; }
+.auth-error, .auth-notice { margin: -6px 0; font-size: 12px; }.auth-actions { margin-top: 17px; }.auth-actions button, .auth-scan-help button, .auth-footer button { font-size: 16px; }
+.auth-providers { margin-top: 40px; }.auth-divider { gap: 15px; font-size: 14px; }.auth-provider-list { gap: 14px; margin-top: 17px; }.auth-provider { width: 36px; height: 36px; border-radius: 8px; background: #f6f8fe; }.auth-provider img { width: 30px; height: 30px; }
+.auth-qr-panel { margin-top: 57px; }.auth-qr-copy { margin-bottom: 25px; font-size: 15px; }.qr-frame { width: 188px; height: 188px; border-radius: 8px; box-shadow: inset 0 0 0 15px #fff; }.qr-noise { inset: 26px; }.qr-finder { width: 42px; height: 42px; border-width: 6px; box-shadow: inset 0 0 0 6px #111; }.finder-one { top: 15px; left: 15px; }.finder-two { top: 15px; right: 15px; }.finder-three { bottom: 15px; left: 15px; }.auth-scan-help { margin-top: 17px; font-size: 15px; }.auth-qr-panel .auth-providers { margin-top: 26px; }.auth-qr-panel .auth-provider-list { gap: 14px; margin-top: 16px; }
+.auth-register-panel { margin-top: 57px; }.auth-register-panel h2 { margin-bottom: 36px; }.auth-register-panel .auth-form { gap: 17px; }.auth-register-panel .auth-submit { margin-top: 5px; }.auth-back-link { top: -25px; left: -34px; font-size: 16px; }.auth-back-link :deep(svg) { width: 17px; height: 17px; }
+.auth-footer { min-height: 42px; gap: 5px; padding: 0 15px; border-radius: 8px; font-size: 14px; }
+@media (max-width: 720px) { .auth-backdrop { display: block; padding: 12px; }.auth-dialog { display: block; width: 100%; min-height: 0; }.auth-promo { min-height: 184px; padding: 22px 24px; border-radius: 10px 10px 0 0; background-size: 130px 130px; }.auth-promo::before { background-size: 130px 130px; }.auth-promo-copy { display: none; }.auth-promo-points { grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 10px 14px; margin: auto 0 0; font-size: 12px; white-space: normal; }.auth-promo-points li { align-items: flex-start; gap: 5px; }.auth-promo-points svg { width: 15px; height: 15px; margin-top: 1px; }.auth-main { min-height: min(675px, calc(100vh - 208px)); padding: 74px 22px 18px; border-radius: 0 0 10px 10px; }.auth-close { top: -174px; right: 14px; width: 37px; height: 37px; border-width: 3px; }.auth-close :deep(svg) { width: 25px; height: 25px; }.auth-corner-switch { top: 17px; right: 16px; transform: scale(.87); }.auth-panel { width: 100%; }.auth-phone-panel, .auth-password-panel, .auth-qr-panel, .auth-register-panel { margin-top: 0; }.auth-panel h2 { margin-bottom: 34px; font-size: 27px; }.auth-field input, .auth-code-button, .auth-submit { height: 54px; font-size: 16px; }.auth-code-row { grid-template-columns: minmax(0, 1fr) 126px; gap: 10px; }.auth-form { gap: 16px; }.auth-submit { margin-top: 6px; }.auth-actions { margin-top: 18px; }.auth-actions button { font-size: 15px; }.auth-providers { margin-top: 42px; }.auth-divider { gap: 12px; font-size: 14px; }.auth-provider-list { gap: 9px; margin-top: 18px; }.auth-provider { width: 42px; height: 42px; border-radius: 9px; }.auth-provider img { width: 32px; height: 32px; }.auth-footer { min-height: 48px; margin-top: 24px; padding: 0 12px; font-size: 13px; }.auth-register-link { white-space: nowrap; }.auth-qr-panel { min-height: 0; }.auth-qr-panel h2 { margin-bottom: 12px; }.auth-qr-copy { margin-bottom: 22px; font-size: 14px; }.qr-frame { width: 190px; height: 190px; }.qr-finder { width: 42px; height: 42px; border-width: 6px; box-shadow: inset 0 0 0 6px #111; }.finder-one { top: 16px; left: 16px; }.finder-two { top: 16px; right: 16px; }.finder-three { bottom: 16px; left: 16px; }.auth-scan-help { margin-top: 16px; font-size: 14px; }.auth-qr-panel .auth-providers { margin-top: 28px; }.auth-register-panel { padding-top: 19px; }.auth-back-link { position: static; justify-self: start; margin-bottom: 32px; font-size: 16px; }.auth-back-link :deep(svg) { width: 19px; height: 19px; }.auth-register-panel h2 { margin-bottom: 34px; } }
 </style>

@@ -1,0 +1,122 @@
+import { afterEach, describe, expect, it, vi } from 'vitest'
+import { changeAdminTemplateCategoryStatus, changeAdminTemplateStatus, changeAdminTemplateTagStatus, changeTenantRole, downloadAdminAuditLogs, loadAdminAuditLogs, loadAdminTemplateCategories, loadAdminTemplateTags, loadAdminTemplates, loadTenantMembers } from '@/api/admin'
+
+describe('admin API', () => {
+  afterEach(() => vi.unstubAllGlobals())
+
+  it('loads tenant members with typed paging and filters', async () => {
+    const fetchMock = vi.fn().mockResolvedValue(jsonResponse({
+      code: 'OK',
+      message: 'success',
+      data: { items: [], page: 2, pageSize: 50, total: 0 },
+    }))
+    vi.stubGlobal('fetch', fetchMock)
+
+    await expect(loadTenantMembers({ page: 2, pageSize: 50, role: 'OPERATOR', status: 'ACTIVE' }, 'token'))
+      .resolves.toEqual({ items: [], page: 2, pageSize: 50, total: 0 })
+
+    expect(fetchMock).toHaveBeenCalledWith(
+      '/api/v1/admin/users?page=2&pageSize=50&role=OPERATOR&status=ACTIVE',
+      expect.objectContaining({ credentials: 'include' }),
+    )
+    expect(new Headers(fetchMock.mock.calls[0][1].headers).get('Authorization')).toBe('Bearer token')
+  })
+
+  it('sends an administrator-only role change command', async () => {
+    const fetchMock = vi.fn().mockResolvedValue(jsonResponse({
+      code: 'OK',
+      message: 'success',
+      data: { userId: 8, tenantId: 11, tenantRole: 'ADMIN' },
+    }))
+    vi.stubGlobal('fetch', fetchMock)
+
+    await expect(changeTenantRole(8, 'ADMIN', 'token')).resolves.toEqual({ userId: 8, tenantId: 11, tenantRole: 'ADMIN' })
+
+    expect(fetchMock).toHaveBeenCalledWith(
+      '/api/v1/admin/users/8/tenant-role',
+      expect.objectContaining({ method: 'PATCH', body: JSON.stringify({ tenantRole: 'ADMIN' }) }),
+    )
+  })
+
+  it('loads tenant-scoped audit logs with outcome and time filters', async () => {
+    const fetchMock = vi.fn().mockResolvedValue(jsonResponse({
+      code: 'OK',
+      message: 'success',
+      data: { items: [], page: 1, pageSize: 20, total: 0 },
+    }))
+    vi.stubGlobal('fetch', fetchMock)
+
+    await expect(loadAdminAuditLogs({
+      page: 1,
+      pageSize: 20,
+      action: 'LOGIN',
+      outcome: 'FAILURE',
+      from: '2026-08-18T00:00:00Z',
+      to: '2026-08-19T00:00:00Z',
+    }, 'token')).resolves.toEqual({ items: [], page: 1, pageSize: 20, total: 0 })
+
+    expect(fetchMock).toHaveBeenCalledWith(
+      '/api/v1/admin/audit-logs?page=1&pageSize=20&action=LOGIN&outcome=FAILURE&from=2026-08-18T00%3A00%3A00Z&to=2026-08-19T00%3A00%3A00Z',
+      expect.objectContaining({ credentials: 'include' }),
+    )
+  })
+
+  it('loads and updates template category operations', async () => {
+    const fetchMock = vi.fn()
+      .mockResolvedValueOnce(jsonResponse({ code: 'OK', message: 'success', data: [] }))
+      .mockResolvedValueOnce(jsonResponse({ code: 'OK', message: 'success', data: { id: 10, code: 'marketing', name: '营销推广', parentCode: null, sortOrder: 10, status: 'PUBLISHED' } }))
+    vi.stubGlobal('fetch', fetchMock)
+
+    await expect(loadAdminTemplateCategories('DRAFT', 'token')).resolves.toEqual([])
+    await expect(changeAdminTemplateCategoryStatus('marketing', 'PUBLISHED', 'token')).resolves.toMatchObject({ code: 'marketing', status: 'PUBLISHED' })
+
+    expect(fetchMock).toHaveBeenNthCalledWith(1, '/api/v1/admin/template-categories?status=DRAFT', expect.objectContaining({ credentials: 'include' }))
+    expect(fetchMock).toHaveBeenNthCalledWith(2, '/api/v1/admin/template-categories/marketing/status', expect.objectContaining({ method: 'PATCH', body: JSON.stringify({ status: 'PUBLISHED' }) }))
+  })
+
+  it('loads and updates template operations', async () => {
+    const fetchMock = vi.fn()
+      .mockResolvedValueOnce(jsonResponse({ code: 'OK', message: 'success', data: [] }))
+      .mockResolvedValueOnce(jsonResponse({ code: 'OK', message: 'success', data: { id: 1001, name: '朋友圈促销', width: 1080, height: 1440, categoryCode: 'marketing', coverAssetId: null, featuredRank: 10, status: 'PUBLISHED', publishedAt: '2026-08-19T01:00:00Z', updatedAt: '2026-08-19T01:00:00Z' } }))
+    vi.stubGlobal('fetch', fetchMock)
+
+    await expect(loadAdminTemplates('DRAFT', 'token')).resolves.toEqual([])
+    await expect(changeAdminTemplateStatus(1001, 'PUBLISHED', 'token')).resolves.toMatchObject({ id: 1001, status: 'PUBLISHED' })
+
+    expect(fetchMock).toHaveBeenNthCalledWith(1, '/api/v1/admin/templates?status=DRAFT', expect.objectContaining({ credentials: 'include' }))
+    expect(fetchMock).toHaveBeenNthCalledWith(2, '/api/v1/admin/templates/1001/status', expect.objectContaining({ method: 'PATCH', body: JSON.stringify({ status: 'PUBLISHED' }) }))
+  })
+
+  it('loads and updates template tag operations', async () => {
+    const fetchMock = vi.fn()
+      .mockResolvedValueOnce(jsonResponse({ code: 'OK', message: 'success', data: [] }))
+      .mockResolvedValueOnce(jsonResponse({ code: 'OK', message: 'success', data: { id: 20, code: 'promotion', name: '促销', sortOrder: 10, status: 'PUBLISHED' } }))
+    vi.stubGlobal('fetch', fetchMock)
+
+    await expect(loadAdminTemplateTags('DRAFT', 'token')).resolves.toEqual([])
+    await expect(changeAdminTemplateTagStatus('promotion', 'PUBLISHED', 'token')).resolves.toMatchObject({ code: 'promotion', status: 'PUBLISHED' })
+
+    expect(fetchMock).toHaveBeenNthCalledWith(1, '/api/v1/admin/template-tags?status=DRAFT', expect.objectContaining({ credentials: 'include' }))
+    expect(fetchMock).toHaveBeenNthCalledWith(2, '/api/v1/admin/template-tags/promotion/status', expect.objectContaining({ method: 'PATCH', body: JSON.stringify({ status: 'PUBLISHED' }) }))
+  })
+
+  it('downloads filtered audit logs as a CSV Blob', async () => {
+    const fetchMock = vi.fn().mockResolvedValue(new Response('id,action\r\n', { status: 200, headers: { 'Content-Type': 'text/csv' } }))
+    vi.stubGlobal('fetch', fetchMock)
+
+    await expect(downloadAdminAuditLogs({ action: 'LOGIN', outcome: 'FAILURE', from: '2026-08-18T00:00:00Z', to: '2026-08-19T00:00:00Z' }, 'token'))
+      .resolves.toMatchObject({ type: 'text/csv', size: 11 })
+
+    expect(fetchMock).toHaveBeenCalledWith(
+      '/api/v1/admin/audit-logs/export?action=LOGIN&outcome=FAILURE&from=2026-08-18T00%3A00%3A00Z&to=2026-08-19T00%3A00%3A00Z',
+      expect.objectContaining({ credentials: 'include' }),
+    )
+  })
+})
+
+function jsonResponse(body: unknown) {
+  return new Response(JSON.stringify(body), {
+    status: 200,
+    headers: { 'Content-Type': 'application/json' },
+  })
+}

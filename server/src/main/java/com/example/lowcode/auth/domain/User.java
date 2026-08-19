@@ -4,6 +4,7 @@ public class User {
     private Long id;
     private String phone;
     private String status;
+    private int securityVersion;
 
     public Long getId() {
         return id;
@@ -27,5 +28,13 @@ public class User {
 
     public void setStatus(String status) {
         this.status = status;
+    }
+
+    public int getSecurityVersion() {
+        return securityVersion;
+    }
+
+    public void setSecurityVersion(int securityVersion) {
+        this.securityVersion = securityVersion;
     }
 }

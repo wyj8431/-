@@ -75,6 +75,104 @@ export interface LoginResult {
   tenantRole: 'ADMIN' | 'USER' | 'OPERATOR'
 }
 
+export interface RefreshResult {
+  accessToken: string
+  tokenType: string
+  expiresIn: number
+}
+
+export interface CurrentIdentity {
+  userId: number
+  tenantId: number
+  phone: string
+  tenantRole: LoginResult['tenantRole']
+}
+
+export interface AdminSummary {
+  memberCount: number
+  activeUserCount: number
+  auditCount: number
+  health: 'UP' | 'DOWN'
+}
+
+export type TenantRole = 'ADMIN' | 'USER' | 'OPERATOR'
+
+export interface TenantMember {
+  userId: number
+  phoneMasked: string
+  tenantRole: TenantRole
+  userStatus: 'ACTIVE' | 'DISABLED'
+  joinedAt: string | null
+}
+
+export interface TenantMemberPage {
+  items: TenantMember[]
+  page: number
+  pageSize: number
+  total: number
+}
+
+export interface TenantRoleChangeResult {
+  userId: number
+  tenantId: number
+  tenantRole: TenantRole
+}
+
+export interface AdminAuditLog {
+  id: number
+  actorUserId: number | null
+  actorPhoneMasked: string
+  action: string
+  resourceType: string
+  resourceId: string | null
+  outcome: 'SUCCESS' | 'FAILURE'
+  requestId: string | null
+  createdAt: string | null
+}
+
+export interface AdminAuditLogPage {
+  items: AdminAuditLog[]
+  page: number
+  pageSize: number
+  total: number
+}
+
+export type TemplateCategoryStatus = 'DRAFT' | 'PUBLISHED' | 'DISABLED'
+
+export interface AdminTemplateCategory {
+  id: number
+  code: string
+  name: string
+  parentCode: string | null
+  sortOrder: number
+  status: TemplateCategoryStatus
+}
+
+export type TemplateTagStatus = 'DRAFT' | 'PUBLISHED' | 'DISABLED'
+
+export interface AdminTemplateTag {
+  id: number
+  code: string
+  name: string
+  sortOrder: number
+  status: TemplateTagStatus
+}
+
+export type TemplateAdminStatus = 'DRAFT' | 'PUBLISHED' | 'DISABLED'
+
+export interface AdminTemplate {
+  id: number
+  name: string
+  width: number
+  height: number
+  categoryCode: string | null
+  coverAssetId: number | null
+  featuredRank: number | null
+  status: TemplateAdminStatus
+  publishedAt: string | null
+  updatedAt: string | null
+}
+
 export interface DesignView {
   id: number
   templateId: number

@@ -1,10 +1,18 @@
 # All+poster
 
-All+poster is a small-business poster workbench. The current vertical slice covers the Java 21/Spring Boot backend and the Vue 3 template-discovery workbench: public template browsing, search, detail, responsive layout, login intent recovery, and authenticated design creation.
+All+poster is a small-business poster workbench. The current vertical slice covers the Java 21/Spring Boot backend and the Vue 3 template-discovery workbench: public template browsing, search, detail, responsive layout, login intent recovery, authenticated design creation, revocable browser sessions, and the first tenant administration shell.
 
 ## P0 Workbench
 
-The current phase is P0, limited to workbench home and template discovery. The editor, free canvas, membership, collaboration, customer service, AI, and video routes remain intentionally unavailable.
+The P0 workbench phase covers home and template discovery. The editor, free canvas, membership, collaboration, customer service, AI, and video routes remain intentionally unavailable.
+
+## P1 Session And Admin
+
+P1 adds an in-memory access-token session backed by an HttpOnly `poster_refresh_token` cookie. The browser restores a valid session through `/api/v1/auth/refresh`; a failed request receives one refresh-and-retry attempt, while failed refreshes clear the local identity. Login, refresh, logout, replay detection, and tenant-role changes are audited server-side.
+
+Phone verification remains the only sign-in flow. A successfully verified new phone number is registered automatically with a default tenant and `ADMIN` membership, so there is no separate registration page or API.
+
+Tenant membership roles are `ADMIN`, `OPERATOR`, and `USER`. Signed-in administrators and operators can open **团队管理** from the account menu and enter `/admin`; a normal user navigating there sees an in-page 403 state. The administration shell now links to the overview, member and role management, template operations, template categories, template tags, and the paginated audit-event list. Administrators can change existing templates, categories, and tags between `DRAFT`, `PUBLISHED`, and `DISABLED`; operators have read-only access. Each status change is audited. Audit CSV export is available. Template creation/editing, tag CRUD, covers, assets, and the WeChat sign-in adapter remain incomplete.
 
 Run the frontend from `poster-client/`:
 

@@ -37,7 +37,9 @@ class DatabaseMigrationIT extends MySqlIntegrationTestSupport {
         "template_tag_relation",
         "template_cover_asset",
         "home_topic",
-        "home_topic_template"
+        "home_topic_template",
+        "auth_refresh_token",
+        "sys_audit_log"
     );
 
     @Autowired
@@ -131,6 +133,40 @@ class DatabaseMigrationIT extends MySqlIntegrationTestSupport {
             "SELECT COUNT(*) FROM home_topic_template WHERE topic_id = 30 AND template_id = 1001",
             Integer.class
         )).isEqualTo(1);
+    }
+
+    @Test
+    void v4AddsRevocableSessionAndAuditState() {
+        Integer securityVersionColumns = jdbcTemplate.queryForObject(
+            """
+                SELECT COUNT(*)
+                FROM information_schema.columns
+                WHERE table_schema = DATABASE()
+                  AND table_name = 'sys_user'
+                  AND column_name = 'security_version'
+                """,
+            Integer.class
+        );
+
+        assertThat(securityVersionColumns).isEqualTo(1);
+        assertThat(indexNames("auth_refresh_token"))
+            .contains("uk_refresh_token_hash", "idx_refresh_family", "idx_refresh_user_active");
+        assertThat(foreignKeyNames("auth_refresh_token"))
+            .contains("fk_refresh_user", "fk_refresh_tenant_member");
+        assertThat(indexNames("sys_audit_log"))
+            .contains("idx_audit_created", "idx_audit_actor_created", "idx_audit_action_created");
+    }
+
+    @Test
+    void v3UsesOnlyTheThreeTenantRoles() {
+        assertThat(jdbcTemplate.queryForObject(
+            "SELECT COUNT(*) FROM sys_tenant_member WHERE role IN ('OWNER', 'MEMBER')",
+            Integer.class
+        )).isZero();
+        assertThat(jdbcTemplate.queryForList(
+            "SELECT DISTINCT role FROM sys_tenant_member ORDER BY role",
+            String.class
+        )).allMatch(role -> Set.of("ADMIN", "USER", "OPERATOR").contains(role));
     }
 
     private List<String> indexNames(String tableName) {

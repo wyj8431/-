@@ -38,4 +38,13 @@ describe('session store', () => {
     session.clear()
     expect(session.tenantRole).toBeNull()
   })
+
+  it('clears a pending template intent when the session is cleared', () => {
+    const session = useSessionStore()
+    session.setPendingTemplateAction({ templateId: 1001, name: '朋友圈促销' })
+
+    session.clear()
+
+    expect(session.pendingTemplateAction).toBeNull()
+  })
 })

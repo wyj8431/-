@@ -12,10 +12,13 @@ spring:
 
 app:
   web:
-    allowed-origins: ${WEB_ALLOWED_ORIGINS:http://localhost:5173}
+    allowed-origins: ${WEB_ALLOWED_ORIGINS:http://localhost:5173,http://127.0.0.1:5173}
   jwt:
     secret: ${JWT_SECRET}
     access-token-ttl: PT15M
+  auth:
+    refresh-token-ttl: ${AUTH_REFRESH_TOKEN_TTL:P30D}
+    cookie-secure: ${AUTH_COOKIE_SECURE:false}
   minio:
     endpoint: ${MINIO_ENDPOINT:http://localhost:9000}
     access-key: ${MINIO_ACCESS_KEY:minioadmin}

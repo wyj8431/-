@@ -31,7 +31,10 @@ public class MyBatisAuthRepository implements AuthRepository {
         Long tenantId = tenantMemberMapper.findPreferredTenantId(user.getId());
         String tenantStatus = tenantId == null ? null : tenantMapper.findStatusById(tenantId);
         String tenantRole = tenantId == null ? null : tenantMemberMapper.findPreferredTenantRole(user.getId());
-        return Optional.of(new UserIdentity(user.getId(), tenantId, user.getPhone(), user.getStatus(), tenantStatus, tenantRole));
+        return Optional.of(new UserIdentity(
+            user.getId(), tenantId, user.getPhone(), user.getStatus(), tenantStatus, tenantRole,
+            user.getSecurityVersion()
+        ));
     }
 
     @Override
@@ -46,12 +49,30 @@ public class MyBatisAuthRepository implements AuthRepository {
         if (inserted != 1 || tenantId != null) {
             String tenantStatus = tenantId == null ? null : tenantMapper.findStatusByIdForUpdate(tenantId);
             String tenantRole = tenantId == null ? null : tenantMemberMapper.findPreferredTenantRoleForUpdate(user.getId());
-            return new UserIdentity(user.getId(), tenantId, user.getPhone(), user.getStatus(), tenantStatus, tenantRole);
+            return new UserIdentity(
+                user.getId(), tenantId, user.getPhone(), user.getStatus(), tenantStatus, tenantRole,
+                user.getSecurityVersion()
+            );
         }
 
         tenantMapper.insert(phone + " 的团队");
         long createdTenantId = tenantMapper.lastInsertedId();
         tenantMemberMapper.insert(createdTenantId, user.getId(), "ADMIN");
-        return new UserIdentity(user.getId(), createdTenantId, user.getPhone(), user.getStatus(), "ACTIVE", "ADMIN");
+        return new UserIdentity(
+            user.getId(), createdTenantId, user.getPhone(), user.getStatus(), "ACTIVE", "ADMIN",
+            user.getSecurityVersion()
+        );
+    }
+
+    @Override
+    public Optional<UserIdentity> findByUserAndTenant(long userId, long tenantId) {
+        UserMapper.UserIdentityRow row = userMapper.findByUserAndTenant(userId, tenantId);
+        if (row == null || row.getId() == null || row.getTenantId() == null) {
+            return Optional.empty();
+        }
+        return Optional.of(new UserIdentity(
+            row.getId(), row.getTenantId(), row.getPhone(), row.getStatus(),
+            row.getTenantStatus(), row.getTenantRole(), row.getSecurityVersion()
+        ));
     }
 }

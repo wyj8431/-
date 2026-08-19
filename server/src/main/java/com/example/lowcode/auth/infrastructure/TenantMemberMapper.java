@@ -4,6 +4,9 @@ import org.apache.ibatis.annotations.Insert;
 import org.apache.ibatis.annotations.Mapper;
 import org.apache.ibatis.annotations.Param;
 import org.apache.ibatis.annotations.Select;
+import org.apache.ibatis.annotations.Update;
+
+import java.util.List;
 
 @Mapper
 public interface TenantMemberMapper {
@@ -50,6 +53,34 @@ public interface TenantMemberMapper {
         VALUES (#{tenantId}, #{userId}, #{role})
         """)
     int insert(
+        @Param("tenantId") long tenantId,
+        @Param("userId") long userId,
+        @Param("role") String role
+    );
+
+    @Select("""
+        SELECT role
+        FROM sys_tenant_member
+        WHERE tenant_id = #{tenantId} AND user_id = #{userId}
+        LIMIT 1
+        FOR UPDATE
+        """)
+    String findRoleForUpdate(@Param("tenantId") long tenantId, @Param("userId") long userId);
+
+    @Select("""
+        SELECT user_id
+        FROM sys_tenant_member
+        WHERE tenant_id = #{tenantId} AND role = 'ADMIN'
+        FOR UPDATE
+        """)
+    List<Long> findAdminUserIdsForUpdate(@Param("tenantId") long tenantId);
+
+    @Update("""
+        UPDATE sys_tenant_member
+        SET role = #{role}
+        WHERE tenant_id = #{tenantId} AND user_id = #{userId}
+        """)
+    int updateRole(
         @Param("tenantId") long tenantId,
         @Param("userId") long userId,
         @Param("role") String role
