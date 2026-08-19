@@ -1,5 +1,5 @@
 import { afterEach, describe, expect, it, vi } from 'vitest'
-import { changeAdminTemplateCategoryStatus, changeAdminTemplateStatus, changeAdminTemplateTagStatus, changeTenantRole, createAdminTemplateTag, deleteAdminTemplateTag, downloadAdminAuditLogs, loadAdminAuditLogs, loadAdminTemplateCategories, loadAdminTemplateTags, loadAdminTemplates, loadTenantMembers, updateAdminTemplateTag } from '@/api/admin'
+import { changeAdminTemplateCategoryStatus, changeAdminTemplateStatus, changeAdminTemplateTagStatus, changeTenantRole, createAdminTemplateTag, createAdminTemplate, deleteAdminTemplateTag, deleteAdminTemplate, downloadAdminAuditLogs, loadAdminAuditLogs, loadAdminTemplateCategories, loadAdminTemplateTags, loadAdminTemplates, loadTenantMembers, updateAdminTemplateTag, updateAdminTemplate } from '@/api/admin'
 
 describe('admin API', () => {
   afterEach(() => vi.unstubAllGlobals())
@@ -85,6 +85,22 @@ describe('admin API', () => {
 
     expect(fetchMock).toHaveBeenNthCalledWith(1, '/api/v1/admin/templates?status=DRAFT', expect.objectContaining({ credentials: 'include' }))
     expect(fetchMock).toHaveBeenNthCalledWith(2, '/api/v1/admin/templates/1001/status', expect.objectContaining({ method: 'PATCH', body: JSON.stringify({ status: 'PUBLISHED' }) }))
+  })
+
+  it('creates, updates, and deletes templates with tag associations', async () => {
+    const fetchMock = vi.fn()
+      .mockResolvedValueOnce(jsonResponse({ code: 'OK', message: 'success', data: { id: 1002, name: '节日促销', width: 1080, height: 1440, categoryCode: 'marketing', coverAssetId: null, featuredRank: 20, status: 'DRAFT', publishedAt: null, updatedAt: '2026-08-19T01:00:00Z', tagCodes: ['promotion'] } }))
+      .mockResolvedValueOnce(jsonResponse({ code: 'OK', message: 'success', data: { id: 1002, name: '节日活动', width: 1200, height: 1600, categoryCode: 'marketing', coverAssetId: null, featuredRank: 30, status: 'DRAFT', publishedAt: null, updatedAt: '2026-08-19T01:00:00Z', tagCodes: ['seasonal'] } }))
+      .mockResolvedValueOnce(jsonResponse({ code: 'OK', message: 'success', data: null }))
+    vi.stubGlobal('fetch', fetchMock)
+
+    await expect(createAdminTemplate({ name: '节日促销', width: 1080, height: 1440, categoryCode: 'marketing', tagCodes: ['promotion'], featuredRank: 20 }, 'token')).resolves.toMatchObject({ id: 1002, tagCodes: ['promotion'] })
+    await expect(updateAdminTemplate(1002, { name: '节日活动', width: 1200, height: 1600, categoryCode: 'marketing', tagCodes: ['seasonal'], featuredRank: 30 }, 'token')).resolves.toMatchObject({ name: '节日活动', tagCodes: ['seasonal'] })
+    await expect(deleteAdminTemplate(1002, 'token')).resolves.toBeNull()
+
+    expect(fetchMock).toHaveBeenNthCalledWith(1, '/api/v1/admin/templates', expect.objectContaining({ method: 'POST', body: JSON.stringify({ name: '节日促销', width: 1080, height: 1440, categoryCode: 'marketing', tagCodes: ['promotion'], featuredRank: 20 }) }))
+    expect(fetchMock).toHaveBeenNthCalledWith(2, '/api/v1/admin/templates/1002', expect.objectContaining({ method: 'PATCH', body: JSON.stringify({ name: '节日活动', width: 1200, height: 1600, categoryCode: 'marketing', tagCodes: ['seasonal'], featuredRank: 30 }) }))
+    expect(fetchMock).toHaveBeenNthCalledWith(3, '/api/v1/admin/templates/1002', expect.objectContaining({ method: 'DELETE' }))
   })
 
   it('loads and updates template tag operations', async () => {

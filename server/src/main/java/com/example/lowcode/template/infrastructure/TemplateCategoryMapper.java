@@ -30,6 +30,14 @@ public interface TemplateCategoryMapper {
     int updateStatus(@Param("code") String code, @Param("status") String status);
 
     @Select("""
+        SELECT c.id, c.code, c.name, p.code AS parentCode, c.sort_order AS sortOrder, c.status
+        FROM template_category c
+        LEFT JOIN template_category p ON p.id = c.parent_id
+        WHERE c.code = #{code}
+        """)
+    AdminCategoryRow findByCode(@Param("code") String code);
+
+    @Select("""
         SELECT c.code, c.name, p.code AS parentCode
         FROM template_category c
         LEFT JOIN template_category p

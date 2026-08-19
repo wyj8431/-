@@ -8,6 +8,7 @@ public enum ErrorCode {
     FORBIDDEN(HttpStatus.FORBIDDEN, "无权执行此操作"),
     NOT_FOUND(HttpStatus.NOT_FOUND, "资源不存在"),
     TEMPLATE_TAG_IN_USE(HttpStatus.CONFLICT, "标签仍被模板引用，无法删除"),
+    TEMPLATE_IN_USE(HttpStatus.CONFLICT, "模板仍被使用，无法删除"),
     DESIGN_VERSION_CONFLICT(HttpStatus.CONFLICT, "设计稿已被更新"),
     INVALID_SCHEMA(HttpStatus.BAD_REQUEST, "设计稿结构无效"),
     INVALID_UPLOAD(HttpStatus.BAD_REQUEST, "上传文件无效"),

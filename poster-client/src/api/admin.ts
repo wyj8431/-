@@ -8,6 +8,8 @@ import type {
   AdminTemplateCategory,
   TemplateCategoryStatus,
   AdminTemplate,
+  CreateAdminTemplateInput,
+  UpdateAdminTemplateInput,
   TemplateAdminStatus,
   AdminTemplateTag,
   TemplateTagStatus,
@@ -124,6 +126,26 @@ export function changeAdminTemplateStatus(
     { method: 'PATCH', body: JSON.stringify({ status }) },
     accessToken,
   )
+}
+
+export function createAdminTemplate(input: CreateAdminTemplateInput, accessToken?: string | null) {
+  return request<AdminTemplate>(
+    '/api/v1/admin/templates',
+    { method: 'POST', body: JSON.stringify(input) },
+    accessToken,
+  )
+}
+
+export function updateAdminTemplate(id: number, input: UpdateAdminTemplateInput, accessToken?: string | null) {
+  return request<AdminTemplate>(
+    `/api/v1/admin/templates/${id}`,
+    { method: 'PATCH', body: JSON.stringify(input) },
+    accessToken,
+  )
+}
+
+export function deleteAdminTemplate(id: number, accessToken?: string | null) {
+  return request<null>(`/api/v1/admin/templates/${id}`, { method: 'DELETE' }, accessToken)
 }
 
 export function loadAdminTemplateTags(

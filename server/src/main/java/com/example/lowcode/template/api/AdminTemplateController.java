@@ -8,7 +8,9 @@ import jakarta.servlet.http.HttpServletRequest;
 import org.springframework.security.core.annotation.AuthenticationPrincipal;
 import org.springframework.security.oauth2.jwt.Jwt;
 import org.springframework.web.bind.annotation.GetMapping;
+import org.springframework.web.bind.annotation.DeleteMapping;
 import org.springframework.web.bind.annotation.PatchMapping;
+import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestMapping;
@@ -51,6 +53,67 @@ public class AdminTemplateController {
         );
     }
 
+    @PostMapping
+    public ApiResponse<TemplateAdminService.TemplateView> create(
+        @RequestBody CreateTemplateRequest body,
+        @AuthenticationPrincipal Jwt jwt,
+        HttpServletRequest request
+    ) {
+        return ApiResponse.success(
+            templateService.create(
+                CurrentUser.fromJwt(jwt), body.name(), body.width(), body.height(),
+                body.categoryCode(), body.tagCodes(), body.featuredRank()
+            ),
+            (String) request.getAttribute(TraceIdFilter.TRACE_ID_ATTRIBUTE)
+        );
+    }
+
+    @PatchMapping("/{templateId}")
+    public ApiResponse<TemplateAdminService.TemplateView> update(
+        @PathVariable long templateId,
+        @RequestBody UpdateTemplateRequest body,
+        @AuthenticationPrincipal Jwt jwt,
+        HttpServletRequest request
+    ) {
+        return ApiResponse.success(
+            templateService.update(
+                CurrentUser.fromJwt(jwt), templateId, body.name(), body.width(), body.height(),
+                body.categoryCode(), body.tagCodes(), body.featuredRank()
+            ),
+            (String) request.getAttribute(TraceIdFilter.TRACE_ID_ATTRIBUTE)
+        );
+    }
+
+    @DeleteMapping("/{templateId}")
+    public ApiResponse<Void> delete(
+        @PathVariable long templateId,
+        @AuthenticationPrincipal Jwt jwt,
+        HttpServletRequest request
+    ) {
+        templateService.delete(CurrentUser.fromJwt(jwt), templateId);
+        return ApiResponse.success(null, (String) request.getAttribute(TraceIdFilter.TRACE_ID_ATTRIBUTE));
+    }
+
     public record ChangeStatusRequest(String status) {
+    }
+
+    public record CreateTemplateRequest(
+        String name,
+        int width,
+        int height,
+        String categoryCode,
+        List<String> tagCodes,
+        Integer featuredRank
+    ) {
+    }
+
+    public record UpdateTemplateRequest(
+        String name,
+        int width,
+        int height,
+        String categoryCode,
+        List<String> tagCodes,
+        Integer featuredRank
+    ) {
     }
 }

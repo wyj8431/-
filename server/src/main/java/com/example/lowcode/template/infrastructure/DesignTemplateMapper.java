@@ -1,6 +1,9 @@
 package com.example.lowcode.template.infrastructure;
 
 import org.apache.ibatis.annotations.Mapper;
+import org.apache.ibatis.annotations.Delete;
+import org.apache.ibatis.annotations.Insert;
+import org.apache.ibatis.annotations.Options;
 import org.apache.ibatis.annotations.Param;
 import org.apache.ibatis.annotations.Select;
 import org.apache.ibatis.annotations.SelectProvider;
@@ -86,6 +89,47 @@ public interface DesignTemplateMapper {
         @Param("status") String status,
         @Param("publishedAt") Instant publishedAt
     );
+
+    @Insert("""
+        INSERT INTO design_template
+            (category_id, name, width, height, cover_asset_id, featured_rank, status, schema_json)
+        VALUES
+            (#{categoryId,jdbcType=BIGINT}, #{name}, #{width}, #{height},
+             #{coverAssetId,jdbcType=BIGINT}, #{featuredRank,jdbcType=INTEGER}, #{status},
+             CAST(#{schemaJson} AS JSON))
+        """)
+    @Options(useGeneratedKeys = true, keyProperty = "id", keyColumn = "id")
+    int insert(AdminTemplateRow row);
+
+    @Update("""
+        UPDATE design_template
+        SET name = #{name}, width = #{width}, height = #{height},
+            category_id = #{categoryId,jdbcType=BIGINT},
+            cover_asset_id = #{coverAssetId,jdbcType=BIGINT},
+            featured_rank = #{featuredRank,jdbcType=INTEGER}
+        WHERE id = #{templateId}
+        """)
+    int updateDetails(
+        @Param("templateId") long templateId,
+        @Param("name") String name,
+        @Param("width") int width,
+        @Param("height") int height,
+        @Param("categoryId") Long categoryId,
+        @Param("coverAssetId") Long coverAssetId,
+        @Param("featuredRank") Integer featuredRank
+    );
+
+    @Select("""
+        SELECT
+            (SELECT COUNT(*) FROM design_document WHERE template_id = #{templateId})
+          + (SELECT COUNT(*) FROM template_field WHERE template_id = #{templateId})
+          + (SELECT COUNT(*) FROM template_tag_relation WHERE template_id = #{templateId})
+          + (SELECT COUNT(*) FROM home_topic_template WHERE template_id = #{templateId})
+        """)
+    int countReferences(@Param("templateId") long templateId);
+
+    @Delete("DELETE FROM design_template WHERE id = #{templateId}")
+    int deleteById(@Param("templateId") long templateId);
 
     class SearchSqlProvider {
         public String search(Map<String, Object> parameters) {
@@ -205,6 +249,7 @@ public interface DesignTemplateMapper {
 
     class AdminTemplateRow {
         private long id;
+        private Long categoryId;
         private String name;
         private int width;
         private int height;
@@ -214,9 +259,12 @@ public interface DesignTemplateMapper {
         private String status;
         private Instant publishedAt;
         private Instant updatedAt;
+        private String schemaJson;
 
         public long getId() { return id; }
         public void setId(long id) { this.id = id; }
+        public Long getCategoryId() { return categoryId; }
+        public void setCategoryId(Long categoryId) { this.categoryId = categoryId; }
         public String getName() { return name; }
         public void setName(String name) { this.name = name; }
         public int getWidth() { return width; }
@@ -235,5 +283,7 @@ public interface DesignTemplateMapper {
         public void setPublishedAt(Instant publishedAt) { this.publishedAt = publishedAt; }
         public Instant getUpdatedAt() { return updatedAt; }
         public void setUpdatedAt(Instant updatedAt) { this.updatedAt = updatedAt; }
+        public String getSchemaJson() { return schemaJson; }
+        public void setSchemaJson(String schemaJson) { this.schemaJson = schemaJson; }
     }
 }

@@ -31,6 +31,41 @@ public interface TemplateTagMapper {
         """)
     AdminTagRow findByCode(@Param("code") String code);
 
+    @Select({
+        "<script>",
+        "SELECT id, code, name, sort_order AS sortOrder, status",
+        "FROM template_tag",
+        "WHERE code IN",
+        "<foreach collection='codes' item='code' open='(' separator=',' close=')'>",
+        "#{code}",
+        "</foreach>",
+        "ORDER BY sort_order ASC, id ASC",
+        "</script>"
+    })
+    List<AdminTagRow> findAdminByCodes(@Param("codes") List<String> codes);
+
+    @Select("""
+        SELECT g.id, g.code, g.name, g.sort_order AS sortOrder, g.status
+        FROM template_tag_relation r
+        JOIN template_tag g ON g.id = r.tag_id
+        WHERE r.template_id = #{templateId}
+        ORDER BY g.sort_order ASC, g.id ASC
+        """)
+    List<AdminTagRow> findByTemplateId(@Param("templateId") long templateId);
+
+    @Delete("DELETE FROM template_tag_relation WHERE template_id = #{templateId}")
+    int deleteRelations(@Param("templateId") long templateId);
+
+    @Insert({
+        "<script>",
+        "INSERT INTO template_tag_relation (template_id, tag_id) VALUES",
+        "<foreach collection='tagIds' item='tagId' separator=','>",
+        "(#{templateId}, #{tagId})",
+        "</foreach>",
+        "</script>"
+    })
+    int insertRelations(@Param("templateId") long templateId, @Param("tagIds") List<Long> tagIds);
+
     @Update("""
         UPDATE template_tag
         SET status = #{status}
@@ -90,6 +125,20 @@ public interface TemplateTagMapper {
         "</script>"
     })
     List<TagRow> findPublishedByTemplateIds(@Param("templateIds") List<Long> templateIds);
+
+    @Select({
+        "<script>",
+        "SELECT r.template_id AS templateId, g.code AS tagCode",
+        "FROM template_tag_relation r",
+        "JOIN template_tag g ON g.id = r.tag_id",
+        "WHERE r.template_id IN",
+        "<foreach collection='templateIds' item='templateId' open='(' separator=',' close=')'>",
+        "#{templateId}",
+        "</foreach>",
+        "ORDER BY r.template_id ASC, g.sort_order ASC, g.id ASC",
+        "</script>"
+    })
+    List<TagRow> findByTemplateIds(@Param("templateIds") List<Long> templateIds);
 
     class TagRow {
         private long templateId;

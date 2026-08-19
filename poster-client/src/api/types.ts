@@ -182,7 +182,19 @@ export interface AdminTemplate {
   status: TemplateAdminStatus
   publishedAt: string | null
   updatedAt: string | null
+  tagCodes: string[]
 }
+
+export interface CreateAdminTemplateInput {
+  name: string
+  width: number
+  height: number
+  categoryCode: string | null
+  tagCodes: string[]
+  featuredRank: number | null
+}
+
+export interface UpdateAdminTemplateInput extends CreateAdminTemplateInput {}
 
 export interface DesignView {
   id: number
