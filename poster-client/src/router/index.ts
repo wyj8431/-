@@ -12,5 +12,6 @@ export const router = createRouter({
     { path: '/admin/template-categories', component: () => import('@/features/admin/AdminTemplateCategoriesPage.vue'), meta: { requiresAuth: true } },
     { path: '/admin/template-tags', component: () => import('@/features/admin/AdminTemplateTagsPage.vue'), meta: { requiresAuth: true } },
     { path: '/admin/template-covers', component: () => import('@/features/admin/AdminTemplateCoversPage.vue'), meta: { requiresAuth: true } },
+    { path: '/admin/home-topics', component: () => import('@/features/admin/AdminHomeTopicsPage.vue'), meta: { requiresAuth: true } },
   ],
 })

@@ -16,6 +16,9 @@ import type {
   TemplateCoverPresignResult,
   TemplateAdminStatus,
   AdminTemplateTag,
+  AdminHomeTopic,
+  HomeTopicStatus,
+  CreateAdminHomeTopicInput,
   TemplateTagStatus,
   CreateAdminTemplateTagInput,
   UpdateAdminTemplateTagInput,
@@ -238,4 +241,34 @@ export function deleteAdminTemplateTag(code: string, accessToken?: string | null
     { method: 'DELETE' },
     accessToken,
   )
+}
+
+export function loadAdminHomeTopics(status?: HomeTopicStatus, accessToken?: string | null) {
+  const query = status ? `?status=${encodeURIComponent(status)}` : ''
+  return request<AdminHomeTopic[]>(`/api/v1/admin/home-topics${query}`, {}, accessToken)
+}
+
+export function changeAdminHomeTopicStatus(id: number, status: HomeTopicStatus, accessToken?: string | null) {
+  return request<AdminHomeTopic>(`/api/v1/admin/home-topics/${id}/status`, {
+    method: 'PATCH',
+    body: JSON.stringify({ status }),
+  }, accessToken)
+}
+
+export function createAdminHomeTopic(input: CreateAdminHomeTopicInput, accessToken?: string | null) {
+  return request<AdminHomeTopic>('/api/v1/admin/home-topics', {
+    method: 'POST',
+    body: JSON.stringify(input),
+  }, accessToken)
+}
+
+export function updateAdminHomeTopic(id: number, input: CreateAdminHomeTopicInput, accessToken?: string | null) {
+  return request<AdminHomeTopic>(`/api/v1/admin/home-topics/${id}`, {
+    method: 'PATCH',
+    body: JSON.stringify(input),
+  }, accessToken)
+}
+
+export function deleteAdminHomeTopic(id: number, accessToken?: string | null) {
+  return request<null>(`/api/v1/admin/home-topics/${id}`, { method: 'DELETE' }, accessToken)
 }

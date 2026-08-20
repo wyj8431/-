@@ -221,6 +221,21 @@ class DatabaseMigrationIT extends MySqlIntegrationTestSupport {
     }
 
     @Test
+    void v8MakesHomeTopicIdAutoIncrement() {
+        String extra = jdbcTemplate.queryForObject(
+            """
+                SELECT extra FROM information_schema.columns
+                WHERE table_schema = DATABASE()
+                  AND table_name = 'home_topic'
+                  AND column_name = 'id'
+                """,
+            String.class
+        );
+
+        assertThat(extra).contains("auto_increment");
+    }
+
+    @Test
     void v3UsesOnlyTheThreeTenantRoles() {
         assertThat(jdbcTemplate.queryForObject(
             "SELECT COUNT(*) FROM sys_tenant_member WHERE role IN ('OWNER', 'MEMBER')",
