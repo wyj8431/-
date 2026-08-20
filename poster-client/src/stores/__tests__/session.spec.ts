@@ -39,6 +39,18 @@ describe('session store', () => {
     expect(session.tenantRole).toBeNull()
   })
 
+  it('does not carry the previous account WeChat binding into a new phone login', () => {
+    const session = useSessionStore()
+    session.wechatBound = true
+
+    session.setSession({
+      accessToken: 'new-access-token', tokenType: 'Bearer', expiresIn: 900,
+      userId: 8, tenantId: 12, tenantRole: 'USER',
+    }, '13900000000')
+
+    expect(session.wechatBound).toBeNull()
+  })
+
   it('clears a pending template intent when the session is cleared', () => {
     const session = useSessionStore()
     session.setPendingTemplateAction({ templateId: 1001, name: '朋友圈促销' })

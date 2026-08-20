@@ -25,12 +25,37 @@ public class MyBatisAuthRepository implements AuthRepository {
     @Override
     public Optional<UserIdentity> findByPhone(String phone) {
         User user = userMapper.findByPhone(phone);
+        return userIdentity(user, false);
+    }
+
+    @Override
+    public Optional<UserIdentity> findByWechatOpenId(String openId) {
+        return userIdentity(userMapper.findByWechatOpenId(openId), false);
+    }
+
+    @Override
+    public Optional<String> findWechatOpenIdByUserId(long userId) {
+        return Optional.ofNullable(userMapper.findWechatOpenIdByUserId(userId));
+    }
+
+    @Override
+    public boolean bindWechatOpenId(long userId, String openId) {
+        return userMapper.bindWechatOpenId(userId, openId) == 1;
+    }
+
+    private Optional<UserIdentity> userIdentity(User user, boolean forUpdate) {
         if (user == null || user.getId() == null) {
             return Optional.empty();
         }
-        Long tenantId = tenantMemberMapper.findPreferredTenantId(user.getId());
-        String tenantStatus = tenantId == null ? null : tenantMapper.findStatusById(tenantId);
-        String tenantRole = tenantId == null ? null : tenantMemberMapper.findPreferredTenantRole(user.getId());
+        Long tenantId = forUpdate
+            ? tenantMemberMapper.findPreferredTenantIdForUpdate(user.getId())
+            : tenantMemberMapper.findPreferredTenantId(user.getId());
+        String tenantStatus = tenantId == null ? null : forUpdate
+            ? tenantMapper.findStatusByIdForUpdate(tenantId)
+            : tenantMapper.findStatusById(tenantId);
+        String tenantRole = tenantId == null ? null : forUpdate
+            ? tenantMemberMapper.findPreferredTenantRoleForUpdate(user.getId())
+            : tenantMemberMapper.findPreferredTenantRole(user.getId());
         return Optional.of(new UserIdentity(
             user.getId(), tenantId, user.getPhone(), user.getStatus(), tenantStatus, tenantRole,
             user.getSecurityVersion()

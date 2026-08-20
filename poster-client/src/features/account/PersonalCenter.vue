@@ -1,16 +1,34 @@
 <script setup lang="ts">
 import { Check, Copy, Link2, LogOut, Mail, Phone, ShieldCheck, UserRound, X } from 'lucide-vue-next'
-import { computed, ref } from 'vue'
+import { computed, onMounted, ref } from 'vue'
 import { useRouter } from 'vue-router'
+import { beginWechatBinding } from '@/api/auth'
 import { useSessionStore } from '@/stores/session'
 
 const router = useRouter()
 const session = useSessionStore()
 const logoutOpen = ref(false)
+const bindingWechat = ref(false)
+const wechatError = ref<string | null>(null)
 
 const phone = computed(() => session.phoneMasked || '当前账号')
 const roleLabels = { ADMIN: '管理员', USER: '普通用户', OPERATOR: '运营' } as const
 const roleLabel = computed(() => session.tenantRole ? roleLabels[session.tenantRole] : '个人版')
+const wechatStatus = computed(() => session.wechatBound === true ? '已绑定' : session.wechatBound === false ? '未绑定' : '加载中')
+
+async function bindWechat() {
+  if (session.wechatBound !== false || bindingWechat.value) return
+  bindingWechat.value = true
+  wechatError.value = null
+  try {
+    const { authorizeUrl } = await beginWechatBinding()
+    window.location.assign(authorizeUrl)
+  } catch (cause) {
+    wechatError.value = cause instanceof Error ? cause.message : '微信绑定暂不可用'
+  } finally {
+    bindingWechat.value = false
+  }
+}
 
 async function confirmLogout() {
   try {
@@ -20,6 +38,14 @@ async function confirmLogout() {
     void router.push('/')
   }
 }
+
+onMounted(() => {
+  if (session.isAuthenticated && session.wechatBound === null) {
+    void session.loadIdentity().catch((cause) => {
+      wechatError.value = cause instanceof Error ? cause.message : '微信绑定状态加载失败'
+    })
+  }
+})
 </script>
 
 <template>
@@ -49,7 +75,8 @@ async function confirmLogout() {
 
       <section class="account-section" aria-labelledby="third-party-title">
         <h2 id="third-party-title">第三方账号管理</h2>
-        <div class="setting-row"><span class="third-party"><span class="wechat-mark">微</span>微信账号</span><strong>未绑定</strong><button type="button" @click="router.push('/')">绑定 <span aria-hidden="true">›</span></button></div>
+        <div class="setting-row"><span class="third-party"><span class="wechat-mark">微</span>微信账号</span><strong>{{ wechatStatus }}</strong><button type="button" aria-label="绑定微信账号" :disabled="session.wechatBound !== false || bindingWechat" @click="bindWechat">{{ bindingWechat ? '跳转中' : '绑定' }} <span aria-hidden="true">›</span></button></div>
+        <p v-if="wechatError" class="wechat-error" role="alert">{{ wechatError }}</p>
         <div class="setting-row"><span class="third-party"><Link2 :size="19" />其他登录方式</span><strong>后续开放</strong><button type="button" @click="router.push('/')">查看 <span aria-hidden="true">›</span></button></div>
       </section>
 
@@ -72,6 +99,7 @@ async function confirmLogout() {
 .account-content { width: min(100% - 44px, 1260px); margin: 0 auto; padding: 30px 0 80px; }.account-content-meta { display: flex; justify-content: space-between; margin-bottom: 21px; color: #91a0b7; font-size: 14px; }.account-content-meta button { display: inline-flex; align-items: center; gap: 5px; border: 0; background: transparent; color: #8da0bb; }.account-content-meta button:hover { color: #116ff2; }
 .account-section { margin-bottom: 26px; padding: 42px 49px; border-radius: 10px; background: #fff; }.account-section h1, .account-section h2 { margin: 0 0 29px; color: #152843; font-size: 22px; }.account-section h2 { font-size: 20px; }.account-identity { position: relative; }.identity-avatar { display: grid; width: 96px; height: 96px; margin: 0 auto 20px; place-items: center; border-radius: 50%; background: #f0f1f2; color: #b3b6b9; }.identity-upload { display: block; margin: 0 auto 28px; border: 0; background: transparent; color: #0877ff; font-size: 15px; }.identity-upload:hover { text-decoration: underline; }
 .identity-row, .setting-row { display: grid; min-height: 73px; grid-template-columns: 130px minmax(0, 1fr) auto; align-items: center; gap: 22px; border-top: 1px solid #edf0f5; color: #8296b2; }.identity-row strong, .setting-row strong { color: #17243a; font-size: 16px; font-weight: 500; }.identity-row button, .setting-row button { border: 0; background: transparent; color: #0877ff; font-size: 15px; }.identity-row button:hover, .setting-row button:hover { text-decoration: underline; }.copy-button { display: inline-grid; place-items: center; color: #6d7f99 !important; }.setting-row > span { display: inline-flex; align-items: center; gap: 8px; color: #7e94b1; font-size: 16px; }.third-party { color: #2f405f !important; }.wechat-mark { display: inline-grid; width: 25px; height: 25px; place-items: center; border-radius: 6px; background: #e8f7e8; color: #2abf43; font-size: 12px; font-weight: 800; }.preference-row { display: flex; align-items: center; justify-content: space-between; gap: 24px; }.preference-row h2 { margin-bottom: 12px; }.preference-row p { margin: 0; color: #7387a5; font-size: 14px; }.toggle-on { width: 46px; height: 26px; padding: 3px; border: 0; border-radius: 99px; background: #0c7bff; }.toggle-on span { display: block; width: 20px; height: 20px; margin-left: auto; border-radius: 50%; background: #fff; }.delete-account { display: block; margin: 0 0 0 auto; border: 0; background: transparent; color: #8a97aa; font-size: 14px; }.delete-account:hover { color: #db5566; }
+.setting-row button:disabled { cursor: default; color: #8a97aa; text-decoration: none; }.wechat-error { margin: 12px 0 0 130px; color: #c23e50; font-size: 14px; }
 .confirm-backdrop { position: fixed; inset: 0; z-index: 80; display: grid; place-items: center; background: rgba(28, 35, 50, .54); }.confirm-dialog { position: relative; width: min(100% - 34px, 430px); padding: 39px 44px 35px; border-radius: 9px; background: #fff; box-shadow: 0 24px 62px rgba(24, 36, 59, .25); }.confirm-dialog h2 { margin: 10px 0 37px; color: #28374f; font-size: 18px; font-weight: 500; }.confirm-close { position: absolute; top: 14px; right: 14px; display: grid; width: 34px; height: 34px; place-items: center; border: 0; border-radius: 50%; background: transparent; color: #6f7d92; }.confirm-close:hover { background: #f2f5fa; }.confirm-dialog > div { display: grid; grid-template-columns: 1fr 1fr; gap: 24px; }.confirm-secondary, .confirm-primary { min-height: 46px; border-radius: 6px; font-size: 16px; }.confirm-secondary { border: 1px solid #dbe3ee; background: #fff; color: #24364f; }.confirm-primary { display: inline-flex; align-items: center; justify-content: center; gap: 6px; border: 0; background: #0877ff; color: #fff; }.confirm-secondary:hover { background: #f6f8fb; }.confirm-primary:hover { background: #0069ed; }
 @media (max-width: 700px) { .account-topbar { min-height: 61px; gap: 15px; padding: 0 16px; }.account-brand { font-size: 21px; }.account-brand-mark { width: 29px; height: 29px; font-size: 12px; }.account-page-title { font-size: 16px; }.account-topbar-actions { gap: 11px; font-size: 12px; }.account-content { width: min(100% - 24px, 1260px); padding-top: 17px; }.account-section { margin-bottom: 14px; padding: 25px 18px; border-radius: 8px; }.account-section h1, .account-section h2 { margin-bottom: 23px; font-size: 18px; }.identity-row, .setting-row { grid-template-columns: 92px minmax(0, 1fr) auto; gap: 10px; min-height: 63px; }.identity-row span, .setting-row > span, .identity-row strong, .setting-row strong { font-size: 13px; }.identity-row button, .setting-row button { font-size: 12px; }.setting-row > span svg { width: 16px; }.preference-row { align-items: start; }.preference-row p { max-width: 225px; font-size: 12px; line-height: 1.55; }.account-content-meta { font-size: 12px; } }
 </style>

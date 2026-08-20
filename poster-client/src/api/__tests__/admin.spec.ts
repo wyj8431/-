@@ -1,4 +1,5 @@
 import { afterEach, describe, expect, it, vi } from 'vitest'
+import { bindAdminTemplateCover, changeAdminTemplateCoverStatus, completeAdminTemplateCover, deleteAdminTemplateCover, loadAdminTemplateCoverAssets, presignAdminTemplateCover } from '@/api/admin'
 import { changeAdminTemplateCategoryStatus, changeAdminTemplateStatus, changeAdminTemplateTagStatus, changeTenantRole, createAdminTemplateTag, createAdminTemplate, deleteAdminTemplateTag, deleteAdminTemplate, downloadAdminAuditLogs, loadAdminAuditLogs, loadAdminTemplateCategories, loadAdminTemplateTags, loadAdminTemplates, loadTenantMembers, updateAdminTemplateTag, updateAdminTemplate } from '@/api/admin'
 
 describe('admin API', () => {
@@ -143,6 +144,24 @@ describe('admin API', () => {
       '/api/v1/admin/audit-logs/export?action=LOGIN&outcome=FAILURE&from=2026-08-18T00%3A00%3A00Z&to=2026-08-19T00%3A00%3A00Z',
       expect.objectContaining({ credentials: 'include' }),
     )
+  })
+  it('manages template cover assets and binds them to templates', async () => {
+    const fetchMock = vi.fn()
+      .mockResolvedValueOnce(jsonResponse({ code: 'OK', message: 'success', data: { sessionId: 9, objectKey: 'platform/template-cover/upload/a.png', uploadUrl: 'https://upload.test', expiresAt: '2026-08-19T01:00:00Z' } }))
+      .mockResolvedValueOnce(jsonResponse({ code: 'OK', message: 'success', data: { id: 10, status: 'DRAFT' } }))
+      .mockResolvedValueOnce(jsonResponse({ code: 'OK', message: 'success', data: [] }))
+      .mockResolvedValueOnce(jsonResponse({ code: 'OK', message: 'success', data: { id: 10, status: 'PUBLISHED' } }))
+      .mockResolvedValueOnce(jsonResponse({ code: 'OK', message: 'success', data: null }))
+      .mockResolvedValueOnce(jsonResponse({ code: 'OK', message: 'success', data: { templateId: 1001, coverAssetId: 10 } }))
+    vi.stubGlobal('fetch', fetchMock)
+
+    await expect(presignAdminTemplateCover({ fileName: 'cover.png', mimeType: 'image/png', fileSize: 4, sha256: 'a'.repeat(64) }, 'token')).resolves.toMatchObject({ sessionId: 9 })
+    await expect(completeAdminTemplateCover(9, 'token')).resolves.toMatchObject({ id: 10 })
+    await expect(loadAdminTemplateCoverAssets(undefined, 'token')).resolves.toEqual([])
+    await expect(changeAdminTemplateCoverStatus(10, 'PUBLISHED', 'token')).resolves.toMatchObject({ status: 'PUBLISHED' })
+    await expect(deleteAdminTemplateCover(10, 'token')).resolves.toBeNull()
+    await expect(bindAdminTemplateCover(1001, 10, 'token')).resolves.toEqual({ templateId: 1001, coverAssetId: 10 })
+    expect(fetchMock).toHaveBeenNthCalledWith(6, '/api/v1/admin/templates/1001/cover', expect.objectContaining({ method: 'PATCH', body: JSON.stringify({ coverAssetId: 10 }) }))
   })
 })
 

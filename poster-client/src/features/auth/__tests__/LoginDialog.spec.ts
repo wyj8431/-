@@ -4,21 +4,18 @@ import { describe, expect, it } from 'vitest'
 import LoginDialog from '@/features/auth/LoginDialog.vue'
 
 describe('LoginDialog', () => {
-  it('switches between phone and QR login without losing the dialog contract', async () => {
+  it('emits a WeChat authorization request instead of showing a static QR code', async () => {
     const user = userEvent.setup()
-    render(LoginDialog, { props: { open: true } })
+    const { emitted } = render(LoginDialog, { props: { open: true } })
 
     expect(screen.getByRole('dialog', { name: '登录后继续' })).toBeVisible()
     expect(screen.getByRole('textbox', { name: '手机号' })).toBeVisible()
 
     await user.click(screen.getByRole('button', { name: '微信登录在这里' }))
 
-    expect(screen.getByLabelText('微信登录二维码')).toBeVisible()
-    expect(screen.queryByRole('textbox', { name: '手机号' })).toBeNull()
-
-    await user.click(screen.getByRole('button', { name: '验证码登录在这里' }))
-
-    expect(screen.getByRole('heading', { name: '手机验证码登录' })).toBeVisible()
+    expect(emitted('wechat-login')).toEqual([[]])
+    expect(screen.queryByLabelText('微信登录二维码')).toBeNull()
+    expect(screen.getByRole('textbox', { name: '手机号' })).toBeVisible()
   })
 
   it('switches to account password login and registration', async () => {
@@ -63,6 +60,15 @@ describe('LoginDialog', () => {
       '钉钉登录',
       '百度登录',
     ])
+  })
+
+  it('uses the WeChat provider icon to request WeChat authorization', async () => {
+    const user = userEvent.setup()
+    const { emitted } = render(LoginDialog, { props: { open: true } })
+
+    await user.click(screen.getByRole('button', { name: '微信登录' }))
+
+    expect(emitted('wechat-login')).toEqual([[]])
   })
 
   it('emits the existing phone verification payload', async () => {

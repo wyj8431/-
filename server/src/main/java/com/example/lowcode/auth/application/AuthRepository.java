@@ -5,6 +5,18 @@ import java.util.Optional;
 public interface AuthRepository {
     Optional<UserIdentity> findByPhone(String phone);
 
+    default Optional<UserIdentity> findByWechatOpenId(String openId) {
+        return Optional.empty();
+    }
+
+    default Optional<String> findWechatOpenIdByUserId(long userId) {
+        return Optional.empty();
+    }
+
+    default boolean bindWechatOpenId(long userId, String openId) {
+        return false;
+    }
+
     default Optional<UserIdentity> findByUserAndTenant(long userId, long tenantId) {
         return Optional.empty();
     }

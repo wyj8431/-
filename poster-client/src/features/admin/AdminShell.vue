@@ -197,6 +197,7 @@ onMounted(() => { void load() })
         <a class="active" href="/admin">概览</a>
         <a href="/admin/members">成员与角色</a>
         <a href="/admin/templates">模板</a>
+        <a href="/admin/template-covers">模板封面</a>
         <a href="/admin/template-categories">模板分类</a>
         <a href="/admin/template-tags">模板标签</a>
         <a href="#audit">审计记录</a>

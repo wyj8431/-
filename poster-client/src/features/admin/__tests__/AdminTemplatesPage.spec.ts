@@ -10,6 +10,8 @@ const adminApi = vi.hoisted(() => ({
   deleteAdminTemplate: vi.fn(),
   loadAdminTemplateCategories: vi.fn(),
   loadAdminTemplateTags: vi.fn(),
+  loadAdminTemplateCoverAssets: vi.fn(),
+  bindAdminTemplateCover: vi.fn(),
 }))
 vi.mock('@/api/admin', () => adminApi)
 
@@ -30,6 +32,10 @@ describe('AdminTemplatesPage', () => {
     adminApi.deleteAdminTemplate.mockReset()
     adminApi.loadAdminTemplateCategories.mockReset()
     adminApi.loadAdminTemplateTags.mockReset()
+    adminApi.loadAdminTemplateCoverAssets.mockReset()
+    adminApi.bindAdminTemplateCover.mockReset()
+    adminApi.loadAdminTemplateCoverAssets.mockResolvedValue([])
+    adminApi.bindAdminTemplateCover.mockImplementation((templateId: number, coverAssetId: number | null) => Promise.resolve({ templateId, coverAssetId }))
   })
 
   it('allows an administrator to filter and change a template status', async () => {
@@ -92,6 +98,22 @@ describe('AdminTemplatesPage', () => {
     await fireEvent.update(screen.getByRole('spinbutton', { name: '模板推荐位' }), '30')
     await fireEvent.click(screen.getByRole('button', { name: '保存' }))
     await waitFor(() => expect(adminApi.updateAdminTemplate).toHaveBeenCalledWith(1002, { name: '节日活动', width: 1200, height: 1600, categoryCode: 'marketing', tagCodes: ['seasonal'], featuredRank: 30 }, 'access-token'))
+  })
+
+  it('binds a published cover and lets an administrator clear it from the template form', async () => {
+    adminApi.loadAdminTemplates.mockResolvedValue([{ id: 1001, name: '朋友圈促销', width: 1080, height: 1440, categoryCode: null, coverAssetId: null, featuredRank: null, status: 'DRAFT', publishedAt: null, updatedAt: null, tagCodes: [] }])
+    adminApi.loadAdminTemplateCategories.mockResolvedValue([])
+    adminApi.loadAdminTemplateTags.mockResolvedValue([])
+    adminApi.loadAdminTemplateCoverAssets.mockResolvedValue([{ id: 50, objectKey: 'platform/template-cover/a.png', mimeType: 'image/png', fileSize: 4, sha256: 'a'.repeat(64), width: 1080, height: 1440, status: 'PUBLISHED', createdAt: null, updatedAt: null }])
+    adminApi.updateAdminTemplate.mockResolvedValue({ id: 1001, name: '朋友圈促销', width: 1080, height: 1440, categoryCode: null, coverAssetId: null, featuredRank: null, status: 'DRAFT', publishedAt: null, updatedAt: null, tagCodes: [] })
+    const session = useSessionStore()
+    session.setSession({ accessToken: 'access-token', tokenType: 'Bearer', expiresIn: 900, userId: 7, tenantId: 11, tenantRole: 'ADMIN' }, '13800000000')
+    render(AdminTemplatesPage, { global: { plugins: [pinia] } })
+
+    await fireEvent.click(await screen.findByRole('button', { name: '编辑 朋友圈促销' }))
+    await fireEvent.update(screen.getByRole('combobox', { name: '模板封面' }), '50')
+    await fireEvent.click(screen.getByRole('button', { name: '保存' }))
+    await waitFor(() => expect(adminApi.bindAdminTemplateCover).toHaveBeenCalledWith(1001, 50, 'access-token'))
   })
 
   it('strictly deletes an unreferenced template and keeps a referenced one', async () => {

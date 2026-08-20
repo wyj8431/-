@@ -1,9 +1,9 @@
 <script setup lang="ts">
 import { computed, onMounted, ref } from 'vue'
 import { ArrowLeft, LayoutTemplate, Pencil, Plus, RefreshCw, ServerCog, ShieldAlert, Trash2 } from 'lucide-vue-next'
-import { changeAdminTemplateStatus, createAdminTemplate, deleteAdminTemplate, loadAdminTemplateCategories, loadAdminTemplateTags, loadAdminTemplates, updateAdminTemplate } from '@/api/admin'
+import { bindAdminTemplateCover, changeAdminTemplateStatus, createAdminTemplate, deleteAdminTemplate, loadAdminTemplateCategories, loadAdminTemplateCoverAssets, loadAdminTemplateTags, loadAdminTemplates, updateAdminTemplate } from '@/api/admin'
 import { ApiError } from '@/api/http'
-import type { AdminTemplate, AdminTemplateCategory, AdminTemplateTag, TemplateAdminStatus } from '@/api/types'
+import type { AdminTemplate, AdminTemplateCategory, AdminTemplateCoverAsset, AdminTemplateTag, TemplateAdminStatus } from '@/api/types'
 import { useSessionStore } from '@/stores/session'
 
 const session = useSessionStore()
@@ -13,12 +13,13 @@ const loading = ref(false)
 const error = ref<Error | null>(null)
 const mutationId = ref<number | null>(null)
 const mutationError = ref<string | null>(null)
-type TemplateForm = { mode: 'create' | 'edit'; id: number | null; name: string; width: string; height: string; categoryCode: string; tagCodes: string[]; featuredRank: string }
+type TemplateForm = { mode: 'create' | 'edit'; id: number | null; name: string; width: string; height: string; categoryCode: string; tagCodes: string[]; featuredRank: string; coverAssetId: string }
 const form = ref<TemplateForm | null>(null)
 const formSubmitting = ref(false)
 const formError = ref<string | null>(null)
 const categories = ref<AdminTemplateCategory[]>([])
 const availableTags = ref<AdminTemplateTag[]>([])
+const coverAssets = ref<AdminTemplateCoverAsset[]>([])
 const pendingDelete = ref<AdminTemplate | null>(null)
 const deleteSubmitting = ref(false)
 const deleteError = ref<string | null>(null)
@@ -26,6 +27,10 @@ const canAccess = computed(() => session.tenantRole === 'ADMIN' || session.tenan
 const canEdit = computed(() => session.tenantRole === 'ADMIN')
 const roleLabel = computed(() => session.tenantRole === 'ADMIN' ? '管理员' : session.tenantRole === 'OPERATOR' ? '运营' : '普通用户')
 const statusLabels: Record<TemplateAdminStatus, string> = { DRAFT: '草稿', PUBLISHED: '已发布', DISABLED: '已停用' }
+const selectableCoverAssets = computed(() => {
+  const selectedId = form.value?.coverAssetId
+  return coverAssets.value.filter((cover) => cover.status === 'PUBLISHED' || String(cover.id) === selectedId)
+})
 
 async function load() {
   if (!canAccess.value) return
@@ -45,24 +50,26 @@ async function load() {
 }
 
 async function loadResources() {
-  const [categoryRows, tagRows] = await Promise.all([
+  const [categoryRows, tagRows, coverRows] = await Promise.all([
     loadAdminTemplateCategories(undefined, session.accessToken),
     loadAdminTemplateTags(undefined, session.accessToken),
+    loadAdminTemplateCoverAssets(undefined, session.accessToken),
   ])
   categories.value = categoryRows ?? []
   availableTags.value = tagRows ?? []
+  coverAssets.value = coverRows ?? []
 }
 
 function openCreate() {
   if (!canEdit.value) return
   formError.value = null
-  form.value = { mode: 'create', id: null, name: '', width: '1080', height: '1440', categoryCode: '', tagCodes: [], featuredRank: '' }
+  form.value = { mode: 'create', id: null, name: '', width: '1080', height: '1440', categoryCode: '', tagCodes: [], featuredRank: '', coverAssetId: '' }
 }
 
 function openEdit(template: AdminTemplate) {
   if (!canEdit.value || mutationId.value !== null) return
   formError.value = null
-  form.value = { mode: 'edit', id: template.id, name: template.name, width: String(template.width), height: String(template.height), categoryCode: template.categoryCode ?? '', tagCodes: [...template.tagCodes], featuredRank: template.featuredRank == null ? '' : String(template.featuredRank) }
+  form.value = { mode: 'edit', id: template.id, name: template.name, width: String(template.width), height: String(template.height), categoryCode: template.categoryCode ?? '', tagCodes: [...template.tagCodes], featuredRank: template.featuredRank == null ? '' : String(template.featuredRank), coverAssetId: template.coverAssetId == null ? '' : String(template.coverAssetId) }
 }
 
 async function submitForm() {
@@ -87,7 +94,10 @@ async function submitForm() {
     const result = current.mode === 'create'
       ? await createAdminTemplate(input, session.accessToken)
       : await updateAdminTemplate(current.id!, input, session.accessToken)
-    templates.value = current.mode === 'create' ? [...templates.value, result] : templates.value.map((item) => item.id === result.id ? result : item)
+    const coverAssetId = current.coverAssetId === '' ? null : Number(current.coverAssetId)
+    const binding = await bindAdminTemplateCover(result.id, coverAssetId, session.accessToken)
+    const updated = { ...result, coverAssetId: binding.coverAssetId }
+    templates.value = current.mode === 'create' ? [...templates.value, updated] : templates.value.map((item) => item.id === updated.id ? updated : item)
     form.value = null
   } catch (cause) {
     formError.value = toError(cause, '模板保存失败').message
@@ -163,6 +173,7 @@ onMounted(() => { void load() })
         <a href="/admin">概览</a>
         <a href="/admin/members">成员与角色</a>
         <a class="active" href="/admin/templates">模板</a>
+        <a href="/admin/template-covers">模板封面</a>
         <a href="/admin/template-categories">模板分类</a>
         <a href="/admin/template-tags">模板标签</a>
         <a href="/admin#audit">审计记录</a>
@@ -193,7 +204,7 @@ onMounted(() => { void load() })
         <div v-else class="table-wrap"><table class="template-table"><thead><tr><th scope="col">模板</th><th scope="col">尺寸</th><th scope="col">分类</th><th scope="col">标签</th><th scope="col">推荐位</th><th scope="col">发布时间</th><th scope="col">状态</th><th v-if="canEdit" scope="col">操作</th></tr></thead><tbody><tr v-for="template in templates" :key="template.id"><td><strong>{{ template.name }}</strong><small>ID {{ template.id }}</small></td><td>{{ template.width }} × {{ template.height }}</td><td>{{ template.categoryCode || '—' }}</td><td>{{ template.tagCodes.join('、') || '—' }}</td><td>{{ template.featuredRank ?? '—' }}</td><td>{{ formatDate(template.publishedAt) }}</td><td><select :value="template.status" :disabled="!canEdit || mutationId === template.id" :aria-label="`修改 ${template.name} 的状态`" @change="changeStatus(template, $event)"><option v-for="(label, status) in statusLabels" :key="status" :value="status">{{ label }}</option></select></td><td v-if="canEdit" class="row-actions"><button class="icon-button" type="button" :disabled="mutationId === template.id || (deleteSubmitting && pendingDelete?.id === template.id)" :aria-label="`编辑 ${template.name}`" :title="`编辑 ${template.name}`" @click="openEdit(template)"><Pencil :size="16" /></button><button class="icon-button danger" type="button" :disabled="mutationId === template.id || (deleteSubmitting && pendingDelete?.id === template.id)" :aria-label="`删除 ${template.name}`" :title="`删除 ${template.name}`" @click="openDelete(template)"><Trash2 :size="16" /></button></td></tr></tbody></table></div>
       </section>
     </main>
-    <div v-if="form" class="dialog-backdrop"><form class="template-dialog" role="dialog" aria-modal="true" @submit.prevent="submitForm"><h2>{{ form.mode === 'create' ? '新增模板' : '编辑模板' }}</h2><label>模板名称<input v-model="form.name" aria-label="模板名称" /></label><div class="dialog-grid"><label>模板宽度<input v-model="form.width" type="number" min="1" max="10000" step="1" aria-label="模板宽度" /></label><label>模板高度<input v-model="form.height" type="number" min="1" max="10000" step="1" aria-label="模板高度" /></label></div><label>模板分类<select v-model="form.categoryCode" aria-label="模板分类"><option value="">未分类</option><option v-for="category in categories" :key="category.code" :value="category.code">{{ category.name }}</option></select></label><fieldset><legend>模板标签</legend><label v-for="tag in availableTags" :key="tag.code" class="checkbox-row"><input v-model="form.tagCodes" type="checkbox" :value="tag.code" :aria-label="`标签 ${tag.name}`" />{{ tag.name }}</label></fieldset><label>模板推荐位<input v-model="form.featuredRank" type="number" min="0" max="100000" step="1" aria-label="模板推荐位" /></label><p v-if="formError" class="dialog-error" role="alert">{{ formError }}</p><div class="dialog-actions"><button type="button" :disabled="formSubmitting" @click="form = null">取消</button><button type="submit" :disabled="formSubmitting">{{ formSubmitting ? '保存中' : '保存' }}</button></div></form></div>
+    <div v-if="form" class="dialog-backdrop"><form class="template-dialog" role="dialog" aria-modal="true" @submit.prevent="submitForm"><h2>{{ form.mode === 'create' ? '新增模板' : '编辑模板' }}</h2><label>模板名称<input v-model="form.name" aria-label="模板名称" /></label><div class="dialog-grid"><label>模板宽度<input v-model="form.width" type="number" min="1" max="10000" step="1" aria-label="模板宽度" /></label><label>模板高度<input v-model="form.height" type="number" min="1" max="10000" step="1" aria-label="模板高度" /></label></div><label>模板分类<select v-model="form.categoryCode" aria-label="模板分类"><option value="">未分类</option><option v-for="category in categories" :key="category.code" :value="category.code">{{ category.name }}</option></select></label><label>模板封面<select v-model="form.coverAssetId" aria-label="模板封面"><option value="">不设置封面</option><option v-for="cover in selectableCoverAssets" :key="cover.id" :value="String(cover.id)">#{{ cover.id }} · {{ cover.width }} × {{ cover.height }}</option></select></label><fieldset><legend>模板标签</legend><label v-for="tag in availableTags" :key="tag.code" class="checkbox-row"><input v-model="form.tagCodes" type="checkbox" :value="tag.code" :aria-label="`标签 ${tag.name}`" />{{ tag.name }}</label></fieldset><label>模板推荐位<input v-model="form.featuredRank" type="number" min="0" max="100000" step="1" aria-label="模板推荐位" /></label><p v-if="formError" class="dialog-error" role="alert">{{ formError }}</p><div class="dialog-actions"><button type="button" :disabled="formSubmitting" @click="form = null">取消</button><button type="submit" :disabled="formSubmitting">{{ formSubmitting ? '保存中' : '保存' }}</button></div></form></div>
     <div v-if="pendingDelete" class="dialog-backdrop"><div class="template-dialog" role="alertdialog" aria-modal="true"><h2>确认删除模板</h2><p>确定删除“{{ pendingDelete.name }}”吗？</p><p v-if="deleteError" class="dialog-error" role="alert">{{ deleteError }}</p><div class="dialog-actions"><button type="button" :disabled="deleteSubmitting" @click="pendingDelete = null">取消</button><button type="button" :disabled="deleteSubmitting" @click="confirmDelete">{{ deleteSubmitting ? '删除中' : '确认删除' }}</button></div></div></div>
   </div>
 </template>

@@ -4,6 +4,7 @@ import com.example.lowcode.auth.security.CurrentUser;
 import com.example.lowcode.common.api.ApiResponse;
 import com.example.lowcode.common.web.TraceIdFilter;
 import com.example.lowcode.template.application.TemplateAdminService;
+import com.example.lowcode.template.application.TemplateCoverAdminService;
 import jakarta.servlet.http.HttpServletRequest;
 import org.springframework.security.core.annotation.AuthenticationPrincipal;
 import org.springframework.security.oauth2.jwt.Jwt;
@@ -23,9 +24,11 @@ import java.util.List;
 @RequestMapping("/api/v1/admin/templates")
 public class AdminTemplateController {
     private final TemplateAdminService templateService;
+    private final TemplateCoverAdminService coverService;
 
-    public AdminTemplateController(TemplateAdminService templateService) {
+    public AdminTemplateController(TemplateAdminService templateService, TemplateCoverAdminService coverService) {
         this.templateService = templateService;
+        this.coverService = coverService;
     }
 
     @GetMapping
@@ -94,6 +97,19 @@ public class AdminTemplateController {
         return ApiResponse.success(null, (String) request.getAttribute(TraceIdFilter.TRACE_ID_ATTRIBUTE));
     }
 
+    @PatchMapping("/{templateId}/cover")
+    public ApiResponse<TemplateCoverAdminService.BindingResult> bindCover(
+        @PathVariable long templateId,
+        @RequestBody BindCoverRequest body,
+        @AuthenticationPrincipal Jwt jwt,
+        HttpServletRequest request
+    ) {
+        return ApiResponse.success(
+            coverService.bindTemplateCover(CurrentUser.fromJwt(jwt), templateId, body.coverAssetId()),
+            (String) request.getAttribute(TraceIdFilter.TRACE_ID_ATTRIBUTE)
+        );
+    }
+
     public record ChangeStatusRequest(String status) {
     }
 
@@ -115,5 +131,8 @@ public class AdminTemplateController {
         List<String> tagCodes,
         Integer featuredRank
     ) {
+    }
+
+    public record BindCoverRequest(Long coverAssetId) {
     }
 }

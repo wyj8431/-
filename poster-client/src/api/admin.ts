@@ -10,12 +10,23 @@ import type {
   AdminTemplate,
   CreateAdminTemplateInput,
   UpdateAdminTemplateInput,
+  AdminTemplateCoverAsset,
+  TemplateCoverAssetStatus,
+  TemplateCoverBindingResult,
+  TemplateCoverPresignResult,
   TemplateAdminStatus,
   AdminTemplateTag,
   TemplateTagStatus,
   CreateAdminTemplateTagInput,
   UpdateAdminTemplateTagInput,
 } from './types'
+
+export interface TemplateCoverPresignInput {
+  fileName: string
+  mimeType: 'image/jpeg' | 'image/png' | 'image/webp'
+  fileSize: number
+  sha256: string
+}
 
 export function loadAdminSummary(accessToken?: string | null) {
   return request<AdminSummary>('/api/v1/admin/summary', {}, accessToken)
@@ -146,6 +157,43 @@ export function updateAdminTemplate(id: number, input: UpdateAdminTemplateInput,
 
 export function deleteAdminTemplate(id: number, accessToken?: string | null) {
   return request<null>(`/api/v1/admin/templates/${id}`, { method: 'DELETE' }, accessToken)
+}
+
+export function presignAdminTemplateCover(input: TemplateCoverPresignInput, accessToken?: string | null) {
+  return request<TemplateCoverPresignResult>('/api/v1/admin/template-cover-assets/presign', {
+    method: 'POST',
+    body: JSON.stringify(input),
+  }, accessToken)
+}
+
+export function completeAdminTemplateCover(sessionId: number, accessToken?: string | null) {
+  return request<AdminTemplateCoverAsset>('/api/v1/admin/template-cover-assets/complete', {
+    method: 'POST',
+    body: JSON.stringify({ sessionId }),
+  }, accessToken)
+}
+
+export function loadAdminTemplateCoverAssets(status?: TemplateCoverAssetStatus, accessToken?: string | null) {
+  const query = status ? `?status=${encodeURIComponent(status)}` : ''
+  return request<AdminTemplateCoverAsset[]>(`/api/v1/admin/template-cover-assets${query}`, {}, accessToken)
+}
+
+export function changeAdminTemplateCoverStatus(id: number, status: TemplateCoverAssetStatus, accessToken?: string | null) {
+  return request<AdminTemplateCoverAsset>(`/api/v1/admin/template-cover-assets/${id}/status`, {
+    method: 'PATCH',
+    body: JSON.stringify({ status }),
+  }, accessToken)
+}
+
+export function deleteAdminTemplateCover(id: number, accessToken?: string | null) {
+  return request<null>(`/api/v1/admin/template-cover-assets/${id}`, { method: 'DELETE' }, accessToken)
+}
+
+export function bindAdminTemplateCover(templateId: number, coverAssetId: number | null, accessToken?: string | null) {
+  return request<TemplateCoverBindingResult>(`/api/v1/admin/templates/${templateId}/cover`, {
+    method: 'PATCH',
+    body: JSON.stringify({ coverAssetId }),
+  }, accessToken)
 }
 
 export function loadAdminTemplateTags(

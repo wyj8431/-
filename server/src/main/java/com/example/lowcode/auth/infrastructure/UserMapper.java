@@ -15,6 +15,20 @@ public interface UserMapper {
     @Select("SELECT id, phone, status, security_version AS securityVersion FROM sys_user WHERE phone = #{phone} LIMIT 1 FOR UPDATE")
     User findByPhoneForUpdate(@Param("phone") String phone);
 
+    @Select("SELECT id, phone, status, security_version AS securityVersion FROM sys_user WHERE wechat_open_id = #{openId} LIMIT 1")
+    User findByWechatOpenId(@Param("openId") String openId);
+
+    @Select("SELECT wechat_open_id FROM sys_user WHERE id = #{userId} LIMIT 1")
+    String findWechatOpenIdByUserId(@Param("userId") long userId);
+
+    @Update("""
+        UPDATE sys_user
+        SET wechat_open_id = #{openId}
+        WHERE id = #{userId}
+          AND wechat_open_id IS NULL
+        """)
+    int bindWechatOpenId(@Param("userId") long userId, @Param("openId") String openId);
+
     @Select("""
         SELECT u.id, u.phone, u.status, u.security_version AS securityVersion,
                tm.tenant_id AS tenantId, t.status AS tenantStatus, tm.role AS tenantRole

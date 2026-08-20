@@ -25,7 +25,7 @@ import {
 } from 'lucide-vue-next'
 import { loadTemplate, loadTemplateCategories } from '@/api/templates'
 import { createDesign } from '@/api/designs'
-import { login } from '@/api/auth'
+import { beginWechatLogin as beginWechatLoginRequest, login } from '@/api/auth'
 import type { TemplateCategory, TemplateDetail, TemplateSummary } from '@/api/types'
 import { useHomeStore } from '@/stores/home'
 import { useNoticeStore } from '@/stores/notice'
@@ -187,6 +187,15 @@ async function submitLogin(payload: { phone: string; verificationCode: string })
     loginError.value = cause instanceof Error ? cause.message : '登录失败，请重试'
   } finally {
     loginLoading.value = false
+  }
+}
+
+async function beginWechatLogin() {
+  try {
+    const { authorizeUrl } = await beginWechatLoginRequest(router.currentRoute.value.fullPath)
+    window.location.assign(authorizeUrl)
+  } catch (cause) {
+    loginError.value = cause instanceof Error ? cause.message : '微信登录暂不可用'
   }
 }
 
@@ -403,7 +412,7 @@ onMounted(() => {
     <nav class="bottom-nav" aria-label="移动端导航"><button class="active" type="button" @click="selectMode('templates')"><LayoutDashboard :size="18" />工作台</button><button type="button" @click="selectMode('designs')"><Bookmark :size="18" />我的设计</button><button type="button" aria-label="智能创作（后续阶段）" @click="selectMode('smart')"><Sparkles :size="18" />更多工具</button></nav>
 
     <TemplateDetailDialog :open="detailOpen" :template="selectedDetail" :loading="detailLoading" @close="detailOpen = false" @use-template="startUseTemplate" />
-    <LoginDialog :open="loginOpen" :loading="loginLoading" :error="loginError" @close="loginOpen = false" @login="submitLogin" />
+    <LoginDialog :open="loginOpen" :loading="loginLoading" :error="loginError" @close="loginOpen = false" @login="submitLogin" @wechat-login="beginWechatLogin" />
     <CreateDesignDialog :open="createOpen" :template="selectedSummary" :loading="createLoading" @close="createOpen = false" @confirm="confirmCreate" />
     <DesignCreatedDialog :open="createdOpen" :design="createdDesign" @close="createdOpen = false" @continue="showPhaseNotice('编辑器')" />
     <div v-if="logoutOpen" class="confirm-backdrop" role="presentation" @click.self="logoutOpen = false">

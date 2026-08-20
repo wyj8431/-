@@ -62,27 +62,7 @@ public class AuthService {
 
         AuthRepository.UserIdentity identity = authRepository.findByPhone(phone)
             .orElseGet(() -> authRepository.createUserWithDefaultTenant(phone));
-        validateLoginIdentity(identity);
-        validateTenantRole(identity);
-        RefreshTokenService.IssuedSession session = refreshTokenService == null
-            ? null
-            : refreshTokenService.issue(
-                identity.userId(),
-                identity.tenantId(),
-                identity.tenantRole(),
-                identity.securityVersion(),
-                userAgent,
-                ipAddress
-            );
-        JwtTokenService.IssuedToken fallbackToken = session == null
-            ? jwtTokenService.issue(identity.userId(), identity.tenantId(), identity.tenantRole())
-            : null;
-        String accessToken = session == null
-            ? fallbackToken.value()
-            : session.accessToken();
-        long expiresIn = session == null
-            ? fallbackToken.expiresInSeconds()
-            : session.expiresInSeconds();
+        LoginResult result = issueSession(identity, userAgent, ipAddress);
 
         if (auditLogService != null) {
             auditLogService.record(new AuditLogService.AuditEvent(
@@ -92,15 +72,7 @@ public class AuthService {
             ));
         }
 
-        return new LoginResult(
-            accessToken,
-            "Bearer",
-            expiresIn,
-            identity.userId(),
-            identity.tenantId(),
-            identity.tenantRole(),
-            session == null ? null : session.refreshToken()
-        );
+        return result;
     }
 
     @Transactional
@@ -125,12 +97,45 @@ public class AuthService {
 
     @Transactional(readOnly = true)
     public MeResult me(CurrentUser currentUser) {
+        AuthRepository.UserIdentity identity = requireActiveIdentity(currentUser.userId(), currentUser.tenantId());
+        return new MeResult(
+            identity.userId(),
+            identity.tenantId(),
+            identity.phone(),
+            identity.tenantRole(),
+            authRepository.findWechatOpenIdByUserId(identity.userId()).isPresent()
+        );
+    }
+
+    AuthRepository.UserIdentity requireActiveIdentity(long userId, long tenantId) {
         AuthRepository.UserIdentity identity = authRepository
-            .findByUserAndTenant(currentUser.userId(), currentUser.tenantId())
+            .findByUserAndTenant(userId, tenantId)
             .orElseThrow(() -> new BusinessException(ErrorCode.UNAUTHORIZED, "登录已失效"));
         validateLoginIdentity(identity);
         validateTenantRole(identity);
-        return new MeResult(identity.userId(), identity.tenantId(), identity.phone(), identity.tenantRole());
+        return identity;
+    }
+
+    LoginResult issueSession(AuthRepository.UserIdentity identity, String userAgent, String ipAddress) {
+        validateLoginIdentity(identity);
+        validateTenantRole(identity);
+        RefreshTokenService.IssuedSession session = refreshTokenService == null
+            ? null
+            : refreshTokenService.issue(
+                identity.userId(), identity.tenantId(), identity.tenantRole(), identity.securityVersion(), userAgent, ipAddress
+            );
+        JwtTokenService.IssuedToken fallbackToken = session == null
+            ? jwtTokenService.issue(identity.userId(), identity.tenantId(), identity.tenantRole())
+            : null;
+        return new LoginResult(
+            session == null ? fallbackToken.value() : session.accessToken(),
+            "Bearer",
+            session == null ? fallbackToken.expiresInSeconds() : session.expiresInSeconds(),
+            identity.userId(),
+            identity.tenantId(),
+            identity.tenantRole(),
+            session == null ? null : session.refreshToken()
+        );
     }
 
     private RefreshTokenService requireRefreshTokenService() {
@@ -213,7 +218,8 @@ public class AuthService {
         long userId,
         long tenantId,
         String phone,
-        String tenantRole
+        String tenantRole,
+        boolean wechatBound
     ) {
     }
 }
