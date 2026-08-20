@@ -141,7 +141,7 @@ onMounted(() => { void load() })
       <a class="admin-brand" href="/"><span>all+</span><strong>poster</strong></a>
       <div class="admin-topbar-title"><span>团队管理</span><i aria-hidden="true" /></div>
       <nav class="admin-nav" aria-label="管理导航">
-        <a href="/admin">概览</a><a href="/admin/members">成员与角色</a><a href="/admin/templates">模板</a><a href="/admin/template-covers">模板封面</a><a href="/admin/template-categories">模板分类</a><a class="active" href="/admin/template-tags">模板标签</a><a href="/admin#audit">审计记录</a>
+        <a href="/admin">概览</a><a href="/admin/members">成员与角色</a><a href="/admin/templates">模板</a><a href="/admin/template-covers">模板封面</a><a href="/admin/home-topics">首页专题</a><a href="/admin/template-categories">模板分类</a><a class="active" href="/admin/template-tags">模板标签</a><a href="/admin#audit">审计记录</a>
       </nav>
       <div class="admin-user-context"><span>{{ session.phoneMasked ?? '当前账号' }}</span><b>{{ roleLabel }}</b></div>
     </header>

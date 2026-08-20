@@ -153,6 +153,35 @@ export interface AdminTemplateCategory {
   status: TemplateCategoryStatus
 }
 
+export type HomeTopicType = 'HOTSPOT_CALENDAR' | 'EDITORIAL_SCENE'
+export type HomeTopicStatus = 'DRAFT' | 'PUBLISHED' | 'DISABLED'
+
+export interface AdminHomeTopic {
+  id: number
+  code: string
+  title: string
+  subtitle: string | null
+  type: HomeTopicType
+  coverAssetId: number | null
+  startsAt: string | null
+  endsAt: string | null
+  sortOrder: number
+  status: HomeTopicStatus
+  templateIds: number[]
+}
+
+export interface CreateAdminHomeTopicInput {
+  code: string
+  title: string
+  subtitle: string | null
+  type: HomeTopicType
+  coverAssetId: number | null
+  startsAt: string | null
+  endsAt: string | null
+  sortOrder: number
+  templateIds: number[]
+}
+
 export type TemplateTagStatus = 'DRAFT' | 'PUBLISHED' | 'DISABLED'
 
 export interface AdminTemplateTag {
