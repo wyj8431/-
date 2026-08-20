@@ -36,9 +36,11 @@ class DatabaseMigrationIT extends MySqlIntegrationTestSupport {
         "template_tag",
         "template_tag_relation",
         "template_cover_asset",
+        "template_cover_upload_session",
         "home_topic",
         "home_topic_template",
         "auth_refresh_token",
+        "auth_wechat_oauth_state",
         "sys_audit_log"
     );
 
@@ -158,6 +160,67 @@ class DatabaseMigrationIT extends MySqlIntegrationTestSupport {
     }
 
     @Test
+    void v5MakesTemplateTagIdAutoIncrement() {
+        String extra = jdbcTemplate.queryForObject(
+            """
+                SELECT extra FROM information_schema.columns
+                WHERE table_schema = DATABASE()
+                  AND table_name = 'template_tag'
+                  AND column_name = 'id'
+                """,
+            String.class
+        );
+
+        assertThat(extra).contains("auto_increment");
+    }
+
+    @Test
+    void v5PreservesTemplateTagRelationForeignKey() {
+        Integer foreignKeyCount = jdbcTemplate.queryForObject(
+            """
+                SELECT COUNT(*) FROM information_schema.table_constraints
+                WHERE constraint_schema = DATABASE()
+                  AND table_name = 'template_tag_relation'
+                  AND constraint_name = 'fk_template_tag_relation_tag'
+                  AND constraint_type = 'FOREIGN KEY'
+                """,
+            Integer.class
+        );
+
+        assertThat(foreignKeyCount).isEqualTo(1);
+    }
+
+    @Test
+    void v6AddsDedicatedTemplateCoverUploadLifecycle() {
+        assertThat(indexNames("template_cover_upload_session"))
+            .contains("uk_template_cover_upload_object_key", "idx_template_cover_upload_status_expiry");
+        assertThat(foreignKeyNames("template_cover_upload_session"))
+            .contains("fk_template_cover_upload_tenant_member");
+        assertThat(foreignKeyNames("template_cover_asset"))
+            .contains("fk_template_cover_asset_upload_session");
+        Integer columnCount = jdbcTemplate.queryForObject(
+            """
+                SELECT COUNT(*) FROM information_schema.columns
+                WHERE table_schema = DATABASE()
+                  AND table_name = 'template_cover_asset'
+                  AND column_name = 'upload_session_id'
+                """,
+            Integer.class
+        );
+        assertThat(columnCount).isEqualTo(1);
+    }
+
+    @Test
+    void v7AddsReplaySafeWechatOauthState() {
+        assertThat(indexNames("auth_wechat_oauth_state"))
+            .contains("uk_wechat_oauth_state_hash", "idx_wechat_oauth_state_expiry");
+        assertThat(foreignKeyNames("auth_wechat_oauth_state"))
+            .contains("fk_wechat_oauth_state_initiator_member");
+        assertThat(checkConstraintNames("auth_wechat_oauth_state"))
+            .contains("chk_wechat_oauth_state_purpose", "chk_wechat_oauth_state_initiator");
+    }
+
+    @Test
     void v3UsesOnlyTheThreeTenantRoles() {
         assertThat(jdbcTemplate.queryForObject(
             "SELECT COUNT(*) FROM sys_tenant_member WHERE role IN ('OWNER', 'MEMBER')",
@@ -187,6 +250,20 @@ class DatabaseMigrationIT extends MySqlIntegrationTestSupport {
                 SELECT constraint_name
                 FROM information_schema.referential_constraints
                 WHERE constraint_schema = DATABASE() AND table_name = ?
+                """,
+            String.class,
+            tableName
+        );
+    }
+
+    private List<String> checkConstraintNames(String tableName) {
+        return jdbcTemplate.queryForList(
+            """
+                SELECT constraint_name
+                FROM information_schema.table_constraints
+                WHERE constraint_schema = DATABASE()
+                  AND table_name = ?
+                  AND constraint_type = 'CHECK'
                 """,
             String.class,
             tableName

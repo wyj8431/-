@@ -19,6 +19,13 @@ app:
   auth:
     refresh-token-ttl: ${AUTH_REFRESH_TOKEN_TTL:P30D}
     cookie-secure: ${AUTH_COOKIE_SECURE:false}
+  wechat:
+    enabled: ${WECHAT_LOGIN_ENABLED:false}
+    app-id: ${WECHAT_OPEN_APP_ID:}
+    app-secret: ${WECHAT_OPEN_APP_SECRET:}
+    redirect-uri: ${WECHAT_OPEN_REDIRECT_URI:}
+    web-public-base-url: ${WEB_PUBLIC_BASE_URL:http://localhost:5173}
+    state-ttl: PT5M
   minio:
     endpoint: ${MINIO_ENDPOINT:http://localhost:9000}
     access-key: ${MINIO_ACCESS_KEY:minioadmin}

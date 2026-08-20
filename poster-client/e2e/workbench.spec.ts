@@ -39,6 +39,7 @@ async function mockDiscoveryApi(page: import('@playwright/test').Page) {
       total: 2,
     })
     if (url.pathname === '/api/v1/auth/login' && route.request().method() === 'POST') return response({ accessToken: 'e2e-token', tokenType: 'Bearer', expiresIn: 3600, userId: 1, tenantId: 1, tenantRole: 'ADMIN' })
+    if (url.pathname === '/api/v1/auth/wechat/login/authorize' && route.request().method() === 'POST') return response({ authorizeUrl: '/wechat-test-authorize' })
     if (url.pathname === '/api/v1/designs' && route.request().method() === 'POST') return response({ id: 301, templateId: 1001, name: '夏日促销 · 我的设计', width: 1080, height: 1440, currentVersion: 1, schema: { schemaVersion: 1, pages: [] }, updatedAt: '2026-08-18T09:00:00Z' })
     return route.fulfill({ status: 404, contentType: 'application/json', body: JSON.stringify({ code: 'NOT_FOUND', message: 'Not found', data: null }) })
   })
@@ -67,7 +68,7 @@ test('creates a design after login and preserves the selected template intent', 
   await page.screenshot({ path: testInfo.outputPath('workbench-desktop-or-mobile.png'), fullPage: false })
 })
 
-test('restores all login dialog modes and local provider icons', async ({ page }) => {
+test('starts the server-authorized WeChat handoff and retains supported dialog modes', async ({ page }) => {
   await page.getByRole('button', { name: '打开夏日促销模板' }).click()
   await page.getByRole('button', { name: '使用此模板' }).click()
 
@@ -82,15 +83,17 @@ test('restores all login dialog modes and local provider icons', async ({ page }
   ])
 
   await dialog.getByRole('button', { name: '微信登录在这里' }).click()
-  await expect(dialog.getByRole('heading', { name: '微信扫码安全登录' })).toBeVisible()
-  await dialog.screenshot({ path: test.info().outputPath('login-dialog-qr.png') })
-  await dialog.getByRole('button', { name: '验证码登录在这里' }).click()
-  await dialog.getByRole('button', { name: '账号密码登录' }).click()
-  await expect(dialog.getByRole('heading', { name: '账号密码登录' })).toBeVisible()
-  await dialog.getByRole('button', { name: '手机号验证码登录' }).click()
-  await dialog.getByRole('button', { name: '手机号码注册' }).click()
-  await expect(dialog.getByRole('heading', { name: '注册账号' })).toBeVisible()
-  await dialog.screenshot({ path: test.info().outputPath('login-dialog-register.png') })
+  await expect(page).toHaveURL(/\/wechat-test-authorize$/)
+  await page.goto('/')
+  await page.getByRole('button', { name: '打开夏日促销模板' }).click()
+  await page.getByRole('button', { name: '使用此模板' }).click()
+  const reopenedDialog = page.getByRole('dialog', { name: '登录后继续' })
+  await reopenedDialog.getByRole('button', { name: '账号密码登录' }).click()
+  await expect(reopenedDialog.getByRole('heading', { name: '账号密码登录' })).toBeVisible()
+  await reopenedDialog.getByRole('button', { name: '手机号验证码登录' }).click()
+  await reopenedDialog.getByRole('button', { name: '手机号码注册' }).click()
+  await expect(reopenedDialog.getByRole('heading', { name: '注册账号' })).toBeVisible()
+  await reopenedDialog.screenshot({ path: test.info().outputPath('login-dialog-register.png') })
 })
 
 test('keeps future-phase navigation in place', async ({ page }) => {

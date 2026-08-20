@@ -1,0 +1,71 @@
+<style>
+  * { box-sizing: border-box; }
+  body { background: #eef2f8; color: #22324c; font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", "Microsoft YaHei", sans-serif; }
+  .login-compare { padding: 28px 24px 50px; }
+  .login-compare h2 { margin: 0 0 8px; font-size: 24px; }
+  .login-compare > p { margin: 0 0 20px; color: #7c8da7; }
+  .states { display: grid; grid-template-columns: repeat(2, minmax(420px, 1fr)); gap: 22px; }
+  .state { overflow: hidden; border: 1px solid #dbe5f2; border-radius: 12px; background: #fff; box-shadow: 0 12px 25px rgba(54, 79, 115, .12); cursor: pointer; }
+  .state.selected { outline: 3px solid #1677ff; }
+  .state-name { padding: 12px 16px; border-bottom: 1px solid #edf1f7; color: #566a88; font-size: 13px; font-weight: 700; }
+  .modal { display: grid; min-height: 330px; grid-template-columns: 39% 61%; }
+  .promo { position: relative; overflow: hidden; padding: 21px 20px; background: #0877f9; color: #fff; }
+  .promo::before { position: absolute; inset: 0; background-image: radial-gradient(circle at 10% 13%, rgba(255,255,255,.16) 0 21px, transparent 22px), radial-gradient(circle at 80% 8%, rgba(255,255,255,.14) 0 32px, transparent 33px), radial-gradient(circle at 22% 73%, rgba(255,255,255,.12) 0 28px, transparent 29px), radial-gradient(circle at 88% 80%, rgba(255,255,255,.13) 0 35px, transparent 36px); background-size: 84px 84px; content: ''; opacity: .8; }
+  .promo > * { position: relative; }
+  .brand { display: flex; align-items: center; gap: 7px; font-size: 20px; font-weight: 800; }
+  .brand-mark { display: grid; width: 27px; height: 27px; place-items: center; border-radius: 9px 9px 9px 4px; background: #fff; color: #0877f9; font-size: 11px; transform: rotate(-10deg); }
+  .slogan { margin: 50px 0 38px; font-size: 27px; font-weight: 850; line-height: 1.16; text-align: center; }
+  .slogan i { display: block; width: 105px; height: 6px; margin: 8px auto 0; border-radius: 50%; background: #e2f000; transform: rotate(-7deg); }
+  .benefits { display: grid; gap: 11px; padding: 0; margin: 0; list-style: none; font-size: 12px; }
+  .benefits li::before { display: inline-grid; width: 15px; height: 15px; margin-right: 7px; place-items: center; border-radius: 50%; background: #dceeff; color: #0877f9; content: '✓'; font-size: 10px; font-weight: 900; }
+  .form { position: relative; display: flex; flex-direction: column; align-items: center; padding: 34px 28px 15px; }
+  .close { position: absolute; top: 8px; right: 10px; color: #8797b1; font-size: 19px; }
+  .switch { position: absolute; top: 10px; right: 39px; padding: 4px 7px; border: 1px solid #9bc7ff; border-radius: 4px; color: #1677ff; font-size: 10px; }
+  .form h3 { margin: 12px 0 7px; color: #2a3342; font-size: 22px; }
+  .form h3 span { color: #0877f9; }
+  .form p { margin: 0 0 17px; color: #95a4bb; font-size: 11px; text-align: center; }
+  .fields { display: grid; width: 100%; max-width: 260px; gap: 10px; }
+  .input { min-height: 37px; padding: 10px 12px; border: 1px solid #e0e7f1; border-radius: 7px; color: #9aa8bc; font-size: 11px; }
+  .code-row { display: grid; grid-template-columns: 1fr 93px; gap: 8px; }
+  .get-code { display: grid; min-height: 37px; place-items: center; border: 1px solid #e0e7f1; border-radius: 7px; color: #26344c; font-size: 11px; }
+  .submit { display: grid; min-height: 39px; place-items: center; border-radius: 7px; background: #0877f9; color: #fff; font-size: 13px; }
+  .qr { display: grid; width: 116px; height: 116px; margin: 1px 0 11px; place-items: center; border: 1px solid #e3e9f2; border-radius: 8px; background: repeating-linear-gradient(45deg, #111 0 3px, #fff 3px 6px), repeating-linear-gradient(-45deg, transparent 0 5px, rgba(0,0,0,.88) 5px 8px); background-blend-mode: multiply; }
+  .qr::after { width: 71px; height: 71px; border: 9px solid #fff; background: #111; box-shadow: 0 0 0 2px #111, inset 0 0 0 8px #fff; content: ''; }
+  .other { width: 100%; max-width: 260px; margin-top: 19px; padding-top: 12px; border-top: 1px dashed #e2e7ef; color: #9aa6b7; font-size: 10px; text-align: center; }
+  .icons { display: flex; justify-content: center; gap: 10px; margin-top: 9px; }
+  .icons i { display: grid; width: 27px; height: 27px; place-items: center; border-radius: 7px; background: #f2f6fc; color: #1878f2; font-size: 12px; font-style: normal; }
+  .icons img { width: 17px; height: 17px; object-fit: contain; }
+  .icons svg { width: 17px; height: 17px; fill: none; stroke: currentColor; stroke-linecap: round; stroke-linejoin: round; stroke-width: 2; }
+  .agreement { width: 100%; max-width: 260px; margin-top: auto; padding: 10px; border-radius: 7px; background: #f7f8fc; color: #8e9bb0; font-size: 10px; }
+  .agreement b { color: #1478ef; font-weight: 500; }
+  @media (max-width: 950px) { .states { grid-template-columns: 1fr; } }
+  @media (max-width: 560px) { .login-compare { padding: 18px 10px 34px; } .states { grid-template-columns: 1fr; } .state { min-width: 0; } .modal { grid-template-columns: 42% 58%; } .promo { padding: 16px 12px; } .slogan { margin: 38px 0 28px; font-size: 21px; } .benefits { font-size: 10px; } .form { padding: 30px 13px 11px; } .form h3 { font-size: 17px; } .switch { display: none; } }
+</style>
+<div class="login-compare">
+  <h2>登录弹窗四状态对照</h2>
+  <p>点击你认可的状态组合；正式实现将保留现有手机号验证码 API。</p>
+  <div class="states" data-multiselect>
+    <article class="state" data-choice="qr" onclick="toggleSelect(this)">
+      <div class="state-name">扫码登录 / Image 1</div>
+      <div class="modal"><aside class="promo"><div class="brand"><span class="brand-mark">all+</span>创客贴</div><div class="slogan">让设计<br>触手可得！<i></i></div><ul class="benefits"><li>只需一步极速注册登录</li><li>100W+ 优质模板每日更新</li><li>1亿+版权素材商用无忧</li><li>AI智能工具助力轻松创作</li><li>一键高清无水印下载</li><li>免费在线设计 支持多人协作</li></ul></aside><main class="form"><span class="switch">验证码登录在这里</span><span class="close">×</span><h3><span>微信扫码</span>安全登录</h3><p>未在创客贴内完成绑定的微信和手机号，是两个独立账号</p><div class="qr" aria-label="二维码"></div><p>扫码登录遇到问题？ <b>点击这里</b></p><div class="other">其他登录方式<div class="icons"><i><svg viewBox="0 0 24 24" aria-label="手机号"><rect x="7" y="2" width="10" height="20" rx="2"/><path d="M10 18h4"/></svg></i><i><img src="https://cdn.simpleicons.org/qq/1677FF" alt="QQ" /></i><i><img src="https://cdn.simpleicons.org/sinaweibo/E6162D" alt="微博" /></i><i><img src="https://cdn.simpleicons.org/wechat/07C160" alt="微信" /></i><i><img src="https://cdn.simpleicons.org/lark/1677FF" alt="飞书" /></i><i><img src="https://cdn.simpleicons.org/baidu/2932E1" alt="百度" /></i></div></div><div class="agreement">登录即同意 <b>用户协议</b>、隐私政策</div></main></div>
+    </article>
+    <article class="state" data-choice="register" onclick="toggleSelect(this)">
+      <div class="state-name">注册账号 / Image 2</div>
+      <div class="modal"><aside class="promo"><div class="brand"><span class="brand-mark">all+</span>创客贴</div><div class="slogan">让设计<br>触手可得！<i></i></div><ul class="benefits"><li>只需一步极速注册登录</li><li>100W+ 优质模板每日更新</li><li>1亿+版权素材商用无忧</li><li>AI智能工具助力轻松创作</li><li>一键高清无水印下载</li><li>免费在线设计 支持多人协作</li></ul></aside><main class="form"><span class="close">×</span><h3>注册账号</h3><div class="fields"><div class="input">输入手机号</div><div class="code-row"><div class="input">输入验证码</div><div class="get-code">获取验证码</div></div><div class="input">输入 6-18 位密码</div><div class="input">确认密码</div><div class="submit">立即注册</div></div><div class="agreement">注册即同意 <b>用户协议</b>、隐私政策</div></main></div>
+    </article>
+    <article class="state" data-choice="phone" onclick="toggleSelect(this)">
+      <div class="state-name">手机验证码登录 / Image 3</div>
+      <div class="modal"><aside class="promo"><div class="brand"><span class="brand-mark">all+</span>创客贴</div><div class="slogan">让设计<br>触手可得！<i></i></div><ul class="benefits"><li>只需一步极速注册登录</li><li>100W+ 优质模板每日更新</li><li>1亿+版权素材商用无忧</li><li>AI智能工具助力轻松创作</li><li>一键高清无水印下载</li><li>免费在线设计 支持多人协作</li></ul></aside><main class="form"><span class="switch">微信登录在这里</span><span class="close">×</span><h3>手机验证码登录</h3><div class="fields"><div class="input">输入手机号</div><div class="code-row"><div class="input">输入短信验证码</div><div class="get-code">获取验证码</div></div><div class="submit">登录</div></div><div class="other">其他登录方式<div class="icons"><i><img src="https://cdn.simpleicons.org/qq/1677FF" alt="QQ" /></i><i><img src="https://cdn.simpleicons.org/sinaweibo/E6162D" alt="微博" /></i><i><img src="https://cdn.simpleicons.org/wechat/07C160" alt="微信" /></i><i><img src="https://cdn.simpleicons.org/lark/1677FF" alt="飞书" /></i><i><img src="https://cdn.simpleicons.org/baidu/2932E1" alt="百度" /></i></div></div><div class="agreement">登录即同意 <b>用户协议</b>、隐私政策</div></main></div>
+    </article>
+    <article class="state" data-choice="password" onclick="toggleSelect(this)">
+      <div class="state-name">账号密码登录 / Image 4</div>
+      <div class="modal"><aside class="promo"><div class="brand"><span class="brand-mark">all+</span>创客贴</div><div class="slogan">让设计<br>触手可得！<i></i></div><ul class="benefits"><li>只需一步极速注册登录</li><li>100W+ 优质模板每日更新</li><li>1亿+版权素材商用无忧</li><li>AI智能工具助力轻松创作</li><li>一键高清无水印下载</li><li>免费在线设计 支持多人协作</li></ul></aside><main class="form"><span class="switch">微信登录在这里</span><span class="close">×</span><h3>账号密码登录</h3><div class="fields"><div class="input">输入邮箱/手机号</div><div class="input">输入密码</div><div class="submit">登录</div></div><div style="display:flex;width:100%;max-width:260px;justify-content:space-between;margin-top:11px;color:#1478ef;font-size:11px"><span>手机验证码登录</span><span style="color:#44516a">忘记密码</span></div><div class="other">其他登录方式<div class="icons"><i><img src="https://cdn.simpleicons.org/qq/1677FF" alt="QQ" /></i><i><img src="https://cdn.simpleicons.org/sinaweibo/E6162D" alt="微博" /></i><i><img src="https://cdn.simpleicons.org/wechat/07C160" alt="微信" /></i><i><img src="https://cdn.simpleicons.org/lark/1677FF" alt="飞书" /></i><i><img src="https://cdn.simpleicons.org/baidu/2932E1" alt="百度" /></i></div></div><div class="agreement">登录即同意 <b>用户协议</b>、隐私政策</div></main></div>
+    </article>
+  </div>
+</div>
+<script>
+  document.querySelectorAll('img[alt="飞书"]').forEach((icon) => {
+    icon.alt = '钉钉'
+    icon.src = 'https://api.iconify.design/ri:dingding-fill.svg?color=%231677FF'
+  })
+</script>

@@ -21,7 +21,7 @@ describe('session restore', () => {
 
   it('deduplicates concurrent restore requests and hydrates the current identity', async () => {
     authApi.refresh.mockResolvedValue({ accessToken: 'restored-token', tokenType: 'Bearer', expiresIn: 900 })
-    authApi.me.mockResolvedValue({ userId: 7, tenantId: 11, phone: '13800000000', tenantRole: 'ADMIN' })
+    authApi.me.mockResolvedValue({ userId: 7, tenantId: 11, phone: '13800000000', tenantRole: 'ADMIN', wechatBound: false })
     const session = useSessionStore()
 
     const [first, second] = await Promise.all([session.restore(), session.restore()])
@@ -32,6 +32,7 @@ describe('session restore', () => {
     expect(authApi.me).toHaveBeenCalledWith('restored-token')
     expect(session.isAuthenticated).toBe(true)
     expect(session.phone).toBe('13800000000')
+    expect(session.wechatBound).toBe(false)
   })
 
   it('completes local logout when server-side revocation is unavailable', async () => {

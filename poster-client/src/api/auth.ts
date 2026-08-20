@@ -1,5 +1,5 @@
 import { request } from './http'
-import type { CurrentIdentity, LoginResult, RefreshResult } from './types'
+import type { CurrentIdentity, LoginResult, RefreshResult, WechatAuthorizeResult } from './types'
 
 export function login(phone: string, verificationCode: string) {
   return request<LoginResult>('/api/v1/auth/login', {
@@ -18,4 +18,15 @@ export function me(accessToken?: string | null) {
 
 export function logout() {
   return request<void>('/api/v1/auth/logout', { method: 'POST' })
+}
+
+export function beginWechatLogin(returnTo: string) {
+  return request<WechatAuthorizeResult>('/api/v1/auth/wechat/login/authorize', {
+    method: 'POST',
+    body: JSON.stringify({ returnTo }),
+  })
+}
+
+export function beginWechatBinding() {
+  return request<WechatAuthorizeResult>('/api/v1/auth/wechat/bind/authorize', { method: 'POST' })
 }

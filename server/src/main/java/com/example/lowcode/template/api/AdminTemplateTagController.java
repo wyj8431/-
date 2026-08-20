@@ -8,7 +8,9 @@ import jakarta.servlet.http.HttpServletRequest;
 import org.springframework.security.core.annotation.AuthenticationPrincipal;
 import org.springframework.security.oauth2.jwt.Jwt;
 import org.springframework.web.bind.annotation.GetMapping;
+import org.springframework.web.bind.annotation.DeleteMapping;
 import org.springframework.web.bind.annotation.PatchMapping;
+import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestMapping;
@@ -38,6 +40,41 @@ public class AdminTemplateTagController {
         );
     }
 
+    @PostMapping
+    public ApiResponse<TemplateTagAdminService.TagView> create(
+        @RequestBody CreateTagRequest body,
+        @AuthenticationPrincipal Jwt jwt,
+        HttpServletRequest request
+    ) {
+        return ApiResponse.success(
+            tagService.create(CurrentUser.fromJwt(jwt), body.code(), body.name(), body.sortOrder()),
+            (String) request.getAttribute(TraceIdFilter.TRACE_ID_ATTRIBUTE)
+        );
+    }
+
+    @PatchMapping("/{code}")
+    public ApiResponse<TemplateTagAdminService.TagView> update(
+        @PathVariable String code,
+        @RequestBody UpdateTagRequest body,
+        @AuthenticationPrincipal Jwt jwt,
+        HttpServletRequest request
+    ) {
+        return ApiResponse.success(
+            tagService.update(CurrentUser.fromJwt(jwt), code, body.name(), body.sortOrder()),
+            (String) request.getAttribute(TraceIdFilter.TRACE_ID_ATTRIBUTE)
+        );
+    }
+
+    @DeleteMapping("/{code}")
+    public ApiResponse<Void> delete(
+        @PathVariable String code,
+        @AuthenticationPrincipal Jwt jwt,
+        HttpServletRequest request
+    ) {
+        tagService.delete(CurrentUser.fromJwt(jwt), code);
+        return ApiResponse.success(null, (String) request.getAttribute(TraceIdFilter.TRACE_ID_ATTRIBUTE));
+    }
+
     @PatchMapping("/{code}/status")
     public ApiResponse<TemplateTagAdminService.TagView> changeStatus(
         @PathVariable String code,
@@ -52,5 +89,11 @@ public class AdminTemplateTagController {
     }
 
     public record ChangeStatusRequest(String status) {
+    }
+
+    public record CreateTagRequest(String code, String name, Integer sortOrder) {
+    }
+
+    public record UpdateTagRequest(String name, Integer sortOrder) {
     }
 }

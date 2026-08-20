@@ -49,6 +49,8 @@ public class SecurityConfig {
             .authorizeHttpRequests(authorize -> authorize
                 .requestMatchers(HttpMethod.POST, "/api/v1/auth/login").permitAll()
                 .requestMatchers(HttpMethod.POST, "/api/v1/auth/refresh", "/api/v1/auth/logout").permitAll()
+                .requestMatchers(HttpMethod.POST, "/api/v1/auth/wechat/login/authorize").permitAll()
+                .requestMatchers(HttpMethod.GET, "/api/v1/auth/wechat/callback").permitAll()
                 .requestMatchers("/api/v1/admin/**").hasAnyRole("ADMIN", "OPERATOR")
                 .requestMatchers(HttpMethod.GET, "/api/v1/home").permitAll()
                 .requestMatchers(HttpMethod.GET, "/api/v1/template-categories").permitAll()
@@ -94,7 +96,7 @@ public class SecurityConfig {
             .map(String::trim)
             .filter(origin -> !origin.isEmpty())
             .toList());
-        configuration.setAllowedMethods(List.of("GET", "POST", "PATCH", "OPTIONS"));
+        configuration.setAllowedMethods(List.of("GET", "POST", "PATCH", "DELETE", "OPTIONS"));
         configuration.setAllowedHeaders(List.of("Authorization", "Content-Type"));
         configuration.setAllowCredentials(true);
         UrlBasedCorsConfigurationSource source = new UrlBasedCorsConfigurationSource();

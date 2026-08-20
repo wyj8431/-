@@ -81,11 +81,16 @@ export interface RefreshResult {
   expiresIn: number
 }
 
+export interface WechatAuthorizeResult {
+  authorizeUrl: string
+}
+
 export interface CurrentIdentity {
   userId: number
   tenantId: number
   phone: string
   tenantRole: LoginResult['tenantRole']
+  wechatBound: boolean
 }
 
 export interface AdminSummary {
@@ -158,6 +163,17 @@ export interface AdminTemplateTag {
   status: TemplateTagStatus
 }
 
+export interface CreateAdminTemplateTagInput {
+  code: string
+  name: string
+  sortOrder: number
+}
+
+export interface UpdateAdminTemplateTagInput {
+  name: string
+  sortOrder: number
+}
+
 export type TemplateAdminStatus = 'DRAFT' | 'PUBLISHED' | 'DISABLED'
 
 export interface AdminTemplate {
@@ -171,6 +187,45 @@ export interface AdminTemplate {
   status: TemplateAdminStatus
   publishedAt: string | null
   updatedAt: string | null
+  tagCodes: string[]
+}
+
+export interface CreateAdminTemplateInput {
+  name: string
+  width: number
+  height: number
+  categoryCode: string | null
+  tagCodes: string[]
+  featuredRank: number | null
+}
+
+export interface UpdateAdminTemplateInput extends CreateAdminTemplateInput {}
+
+export type TemplateCoverAssetStatus = 'DRAFT' | 'PUBLISHED' | 'DISABLED'
+
+export interface AdminTemplateCoverAsset {
+  id: number
+  objectKey: string | null
+  mimeType: string | null
+  fileSize: number
+  sha256: string | null
+  width: number
+  height: number
+  status: TemplateCoverAssetStatus | null
+  createdAt: string | null
+  updatedAt: string | null
+}
+
+export interface TemplateCoverPresignResult {
+  sessionId: number
+  objectKey: string
+  uploadUrl: string
+  expiresAt: string
+}
+
+export interface TemplateCoverBindingResult {
+  templateId: number
+  coverAssetId: number | null
 }
 
 export interface DesignView {

@@ -82,6 +82,7 @@ class AuthSessionSecurityTest extends MySqlIntegrationTestSupport {
         assertThat(me.getStatusCode()).isEqualTo(HttpStatus.OK);
         assertThat(me.getBody().at("/data/phone").asText()).isEqualTo("13900001002");
         assertThat(me.getBody().at("/data/tenantRole").asText()).isEqualTo("ADMIN");
+        assertThat(me.getBody().at("/data/wechatBound").asBoolean()).isFalse();
     }
 
     private ResponseEntity<JsonNode> exchange(
